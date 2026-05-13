@@ -1,0 +1,3969 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Microsoft OCs — Project Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  /* Brand */
+  --brand-yellow:#FECF48;
+  --brand-yellow-700:#E0B22A;
+  --brand-blue:#1376D4;
+  --brand-blue-700:#0F5FAB;
+  --brand-blue-50:#EAF3FC;
+  --brand-black:#080808;
+
+  /* LearningMate */
+  --lm-green:#8DC63F;
+  --lm-blue:#1B4F8C;
+
+  /* Neutrals */
+  --ink:#080808;
+  --ink-2:#2C2F33;
+  --ink-3:#5A5F66;
+  --ink-4:#8A8F97;
+  --line:#E5E8EC;
+  --line-2:#ECEEF1;
+  --bg:#FFFFFF;
+  --bg-alt:#F8FAFC;
+  --bg-yellow-soft:#FFF6D6;
+
+  /* RAG */
+  --rag-green:#2BAA52;
+  --rag-green-soft:#DDF3E5;
+  --rag-amber:#B8930E;
+  --rag-amber-soft:#FFF1B8;
+  --rag-red:#C53D3D;
+  --rag-red-soft:#FBE0E0;
+  --rag-gray:#8A8F97;
+  --rag-gray-soft:#ECEEF1;
+
+  /* Status (workflow) */
+  --st-completed:#2BAA52;
+  --st-wip:#1376D4;
+  --st-wip-late:#C53D3D;
+  --st-notstarted:#B7BCC4;
+  --st-ready:#FECF48;
+
+  /* Lifecycle phase tints (used later in matrix & headers) */
+  --ph-kickoff:#6F42C1;
+  --ph-discovery:#1376D4;
+  --ph-design:#1B4F8C;
+  --ph-development:#8A4B12;
+  --ph-delivery:#2BAA52;
+
+  --radius:12px;
+  --radius-sm:8px;
+  --shadow-sm:0 1px 2px rgba(8,8,8,0.04),0 2px 4px rgba(8,8,8,0.04);
+  --shadow-md:0 4px 14px rgba(8,8,8,0.08);
+
+  --font:"proxima-nova","Proxima Nova","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font);
+  color:var(--ink);
+  background:var(--bg-alt);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ---------- TOP BRAND BAR ---------- */
+.topbar{background:#fff;border-bottom:1px solid var(--line);position:relative}
+.topbar::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;
+  background:linear-gradient(90deg,var(--lm-green) 0%,var(--lm-green) 22%,var(--lm-blue) 22%,var(--lm-blue) 48%,var(--brand-yellow) 48%,var(--brand-yellow) 68%,var(--brand-blue) 68%,var(--brand-blue) 100%);
+}
+.topbar-inner{
+  max-width:1480px;margin:0 auto;padding:14px 24px;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;
+}
+.brand-left,.brand-right{display:flex;align-items:center;gap:10px}
+.lm-logo{height:34px;width:auto;display:block}
+.twou-logo{display:block;width:36px;height:36px}
+
+.topbar-meta{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.topbar-title{
+  font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.01em;
+  display:flex;align-items:baseline;gap:8px;
+}
+.topbar-title .accent{color:var(--brand-blue)}
+.topbar-title .pill{
+  font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--brand-yellow);color:var(--brand-black);
+  padding:2px 7px;border-radius:4px;transform:translateY(-2px);
+}
+.topbar-sub{font-size:12px;color:var(--ink-3);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.topbar-sub .dot{width:4px;height:4px;border-radius:50%;background:var(--ink-4)}
+.refresh-btn{
+  background:var(--brand-black);color:#fff;border:0;
+  font:inherit;font-size:12px;font-weight:700;
+  padding:5px 10px;border-radius:6px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:background .15s;
+}
+.refresh-btn:hover{background:#222}
+.refresh-btn:disabled{opacity:.55;cursor:wait}
+.refresh-btn svg{width:12px;height:12px}
+.refresh-btn.spinning svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.health-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.health-dot.ok{background:var(--rag-green)}
+.health-dot.err{background:var(--rag-red)}
+.health-dot.loading{background:var(--rag-amber);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- TAB BAR ---------- */
+.tabbar{
+  background:var(--brand-black);border-bottom:4px solid var(--brand-yellow);
+  position:sticky;top:0;z-index:90;
+}
+.tabbar-inner{
+  max-width:1480px;margin:0 auto;padding:0 16px;
+  display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
+}
+.tabbar-inner::-webkit-scrollbar{display:none}
+.tab-btn{
+  appearance:none;background:transparent;color:#C8CCD2;border:0;
+  font:inherit;font-size:13px;font-weight:600;
+  padding:14px 14px 12px;border-bottom:3px solid transparent;
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;
+  transition:color .15s,border-color .15s;
+}
+.tab-btn:hover{color:#fff}
+.tab-btn[aria-selected="true"]{color:var(--brand-yellow);border-bottom-color:var(--brand-yellow)}
+.tab-btn .tab-icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab-btn .tab-count{
+  background:rgba(255,255,255,.12);color:#E5E8EC;
+  font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;line-height:1.5;
+}
+.tab-btn[aria-selected="true"] .tab-count{background:var(--brand-yellow);color:var(--brand-black)}
+
+/* ---------- LAYOUT ---------- */
+main{max-width:1480px;margin:0 auto;padding:24px}
+.panel{display:none}
+.panel[aria-hidden="false"]{display:block}
+
+.panel-head{margin-bottom:18px}
+.panel-head .eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:6px;
+}
+.panel-head .eyebrow .dot{width:6px;height:6px;background:var(--brand-black);border-radius:50%}
+.panel-head h1{
+  margin:0;font-size:30px;font-weight:800;color:var(--brand-black);letter-spacing:-.015em;
+}
+.panel-head h1 .accent{color:var(--brand-blue)}
+.panel-head p.lede{margin:6px 0 0;color:var(--ink-3);font-size:14px;max-width:780px}
+
+/* Generic card */
+.card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;box-shadow:var(--shadow-sm);
+}
+
+/* Scaffold preview card */
+.scaffold-card{
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius);
+  padding:24px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;
+  margin-top:12px;
+}
+.scaffold-card .num{
+  width:48px;height:48px;border-radius:10px;
+  background:var(--brand-blue-50);color:var(--brand-blue-700);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:800;
+}
+.scaffold-card h3{margin:0 0 4px;font-size:16px;font-weight:700;color:var(--ink)}
+.scaffold-card p{margin:0;color:var(--ink-3);font-size:13px;line-height:1.55}
+.scaffold-card .feature-list{margin:10px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 14px}
+.scaffold-card .feature-list li{font-size:12px;color:var(--ink-2);padding-left:14px;position:relative}
+.scaffold-card .feature-list li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;background:var(--brand-yellow);border-radius:50%}
+
+/* Stat strip used in scaffold */
+.stat-strip{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;margin-top:18px;
+}
+.stat-strip .stat{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:12px 14px;
+}
+.stat .stat-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.stat .stat-value{font-size:24px;font-weight:800;color:var(--brand-black);margin-top:2px;letter-spacing:-.01em}
+.stat .stat-sub{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+/* Loading / error banner */
+.banner{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--radius);
+  margin-bottom:18px;font-size:13px;font-weight:600;
+}
+.banner.loading{background:var(--brand-blue-50);color:var(--brand-blue-700);border:1px solid #D0E2F6}
+.banner.error{background:var(--rag-red-soft);color:#7A1F1F;border:1px solid #F0BABA}
+.banner.info{background:var(--bg-yellow-soft);color:#6E5300;border:1px solid #F1DC8F}
+.banner svg{width:18px;height:18px;flex-shrink:0}
+
+/* Footer */
+footer.foot{
+  max-width:1480px;margin:24px auto 0;padding:18px 24px 28px;
+  font-size:11px;color:var(--ink-4);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+footer.foot .left{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+footer.foot .left .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-4)}
+footer.foot code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,#EEF0F3 0%,#F7F8FA 50%,#EEF0F3 100%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ---------- NARRATIVE TAB ---------- */
+.rag-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:4px;
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  font-family:var(--mono);white-space:nowrap;
+}
+.rag-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.rag-badge.green{background:var(--rag-green-soft);color:#176B33}
+.rag-badge.amber{background:var(--rag-amber-soft);color:#6E5300}
+.rag-badge.red{background:var(--rag-red-soft);color:#7A1F1F}
+.rag-badge.gray{background:var(--rag-gray-soft);color:var(--ink-3)}
+
+.verdict-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px 26px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+  display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start;
+}
+.verdict-card::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+.verdict-card.green::before{background:var(--rag-green)}
+.verdict-card.amber::before{background:var(--rag-amber)}
+.verdict-card.red::before{background:var(--rag-red)}
+.verdict-card .v-eyebrow{
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:4px;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.verdict-card .v-eyebrow .ddot{width:6px;height:6px;border-radius:50%}
+.verdict-card.green .v-eyebrow .ddot{background:var(--rag-green)}
+.verdict-card.amber .v-eyebrow .ddot{background:var(--rag-amber)}
+.verdict-card.red .v-eyebrow .ddot{background:var(--rag-red)}
+.verdict-card .v-title{
+  font-size:30px;font-weight:800;color:var(--brand-black);letter-spacing:-.015em;
+  line-height:1.15;margin:0 0 8px;
+}
+.verdict-card .v-title .accent.green{color:var(--rag-green)}
+.verdict-card .v-title .accent.amber{color:#B8930E}
+.verdict-card .v-title .accent.red{color:var(--rag-red)}
+.verdict-card .v-sub{color:var(--ink-2);font-size:14px;line-height:1.55;max-width:62ch;margin:0}
+.verdict-card .v-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0}
+.verdict-card .v-asof{font-size:11px;color:var(--ink-4);text-align:right}
+
+.btn-primary{
+  appearance:none;background:var(--brand-black);color:#fff;border:0;
+  font:inherit;font-size:13px;font-weight:700;
+  padding:9px 14px;border-radius:8px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;
+  transition:background .15s,transform .05s;
+}
+.btn-primary:hover{background:#222}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary svg{width:14px;height:14px}
+.btn-primary.copied{background:var(--rag-green)}
+
+.section-title{
+  display:flex;align-items:baseline;gap:10px;margin:26px 0 10px;
+}
+.section-title h2{
+  margin:0;font-size:16px;font-weight:800;color:var(--brand-black);letter-spacing:-.005em;
+  text-transform:uppercase;font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+}
+.section-title .rule{flex:1;height:1px;background:var(--line)}
+
+.phase-list{display:grid;gap:10px}
+.phase-row{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 18px 14px 24px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;
+  position:relative;
+}
+.phase-row::before{
+  content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;
+}
+.phase-row.green::before{background:var(--rag-green)}
+.phase-row.amber::before{background:var(--rag-amber)}
+.phase-row.red::before{background:var(--rag-red)}
+.phase-row.gray::before{background:var(--rag-gray)}
+.phase-row .ph-num{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink-4);
+  background:var(--bg-alt);padding:5px 9px;border-radius:5px;line-height:1;align-self:start;margin-top:2px;
+}
+.phase-row .ph-body{min-width:0}
+.phase-row .ph-name{
+  font-weight:800;color:var(--brand-black);font-size:15px;letter-spacing:.01em;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.phase-row .ph-prose{color:var(--ink-3);font-size:13px;margin-top:4px;line-height:1.5}
+.phase-row .ph-prose b{color:var(--brand-black);font-weight:700}
+.phase-row .ph-bar{
+  display:flex;height:6px;background:var(--line-2);border-radius:3px;overflow:hidden;margin-top:10px;
+  max-width:560px;
+}
+.phase-row .ph-bar .seg{display:block;height:100%}
+.phase-row .ph-bar .seg.completed{background:var(--st-completed)}
+.phase-row .ph-bar .seg.in-progress{background:var(--st-wip)}
+.phase-row .ph-stats{
+  display:flex;flex-direction:column;gap:2px;color:var(--ink-3);font-size:12px;
+  font-variant-numeric:tabular-nums;text-align:right;align-self:start;margin-top:2px;
+}
+.phase-row .ph-stats .pct{font-size:20px;font-weight:800;color:var(--brand-black);line-height:1}
+.phase-row .ph-stats .pct-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);font-weight:700}
+
+.commitments{
+  margin-top:6px;background:var(--bg);border:1px solid var(--line);
+  border-left:4px solid var(--brand-blue);border-radius:var(--radius);
+  padding:18px 22px;
+}
+.commitments h3{margin:0 0 12px;font-size:15px;font-weight:800;color:var(--brand-black);letter-spacing:-.005em;
+  display:flex;align-items:center;gap:10px;
+}
+.commitments h3 .sub{font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:0}
+.commitments .com-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;
+}
+.commitments .com-tile{
+  background:var(--bg-alt);border:1px solid var(--line-2);border-radius:var(--radius-sm);
+  padding:10px 12px;
+}
+.commitments .com-tile.past{border-color:#F0BABA;background:var(--rag-red-soft)}
+.commitments .com-tile.next14{border-color:#F3D87A;background:#FFF7DC}
+.commitments .com-tile.delivered{border-color:#BFE3CB;background:var(--rag-green-soft)}
+.commitments .com-tile .com-label{
+  font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);line-height:1.3;
+}
+.commitments .com-tile .com-value{font-size:22px;font-weight:800;color:var(--brand-black);margin-top:4px;letter-spacing:-.01em}
+.commitments .com-tile.past .com-value{color:#7A1F1F}
+.commitments .com-tile.delivered .com-value{color:#176B33}
+
+.narrative-loading,.narrative-empty{padding:48px 20px;text-align:center;color:var(--ink-3);font-size:14px;
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius);
+}
+
+/* ---------- DELIVERY STATUS TAB ---------- */
+.dlv-grid-top{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;margin-bottom:18px}
+.dlv-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+}
+.dlv-card .top-rail{position:absolute;top:0;left:0;right:0;height:4px}
+.dlv-card.green .top-rail{background:var(--rag-green)}
+.dlv-card.amber .top-rail{background:var(--rag-amber)}
+.dlv-card.red .top-rail{background:var(--rag-red)}
+.dlv-card.gray .top-rail{background:var(--rag-gray)}
+.dlv-card .eyebrow{
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:4px;display:flex;align-items:center;gap:7px;
+}
+.dlv-card .eyebrow .ddot{width:6px;height:6px;border-radius:50%}
+.dlv-card.green .eyebrow .ddot{background:var(--rag-green)}
+.dlv-card.amber .eyebrow .ddot{background:var(--rag-amber)}
+.dlv-card.red   .eyebrow .ddot{background:var(--rag-red)}
+.dlv-card.gray  .eyebrow .ddot{background:var(--rag-gray)}
+.dlv-card .title{font-size:22px;font-weight:800;color:var(--brand-black);letter-spacing:-.015em;line-height:1.2;margin:0 0 6px}
+.dlv-card .title .accent.green{color:var(--rag-green)}
+.dlv-card .title .accent.amber{color:#B8930E}
+.dlv-card .title .accent.red{color:var(--rag-red)}
+.dlv-card .sub{color:var(--ink-2);font-size:13px;line-height:1.55;margin:0}
+.dlv-card .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-3)}
+.dlv-card .meta b{color:var(--brand-black);font-weight:700}
+
+.bottleneck-card .phase-pill{
+  display:inline-flex;align-items:center;gap:6px;background:var(--bg-alt);
+  font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;
+  color:var(--ink-2);margin-bottom:6px;
+}
+.bottleneck-card .driver-list{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:5px;font-size:12px;color:var(--ink-3)}
+.bottleneck-card .driver-list li{display:flex;justify-content:space-between;gap:10px}
+.bottleneck-card .driver-list .label{color:var(--ink-3)}
+.bottleneck-card .driver-list .value{font-weight:700;color:var(--brand-black);font-variant-numeric:tabular-nums}
+
+/* Two-lens Overview */
+.lens-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px}
+.lens-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-sm);
+  display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;
+}
+.lens-card .donut-wrap{position:relative;width:108px;height:108px;flex-shrink:0}
+.lens-card .donut-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.lens-card .donut-center .big{font-size:24px;font-weight:800;color:var(--brand-black);letter-spacing:-.01em;line-height:1}
+.lens-card .donut-center .sm{font-size:10px;color:var(--ink-3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.lens-card .lens-body .lens-label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.lens-card .lens-body h3{margin:2px 0 4px;font-size:17px;font-weight:800;color:var(--brand-black);letter-spacing:-.005em}
+.lens-card .lens-body p{margin:0;font-size:12px;color:var(--ink-3);line-height:1.5}
+.lens-card .lens-body p b{color:var(--brand-black);font-weight:700}
+
+/* Signoff scorecards */
+.signoff-section{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:18px}
+.signoff-table-wrap{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-sm);
+}
+.signoff-table-wrap h3,.chart-wrap h3{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);font-family:var(--mono)}
+.signoff-table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.signoff-table th,.signoff-table td{padding:8px 8px;border-bottom:1px solid var(--line-2);text-align:right}
+.signoff-table th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:right}
+.signoff-table th:first-child,.signoff-table td:first-child{text-align:left;color:var(--ink-2);font-weight:700}
+.signoff-table td .so-cell{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.signoff-table td .so-num{font-weight:700;color:var(--brand-black);line-height:1}
+.signoff-table td .so-bar{width:54px;height:4px;background:var(--line-2);border-radius:2px;overflow:hidden}
+.signoff-table td .so-bar > span{display:block;height:100%;background:var(--st-completed)}
+.signoff-table td.cumcol{background:var(--brand-blue-50)}
+.signoff-table tr.totalrow{background:var(--bg-alt);font-weight:700}
+.signoff-table tr.totalrow td:first-child{color:var(--brand-black)}
+
+.chart-wrap{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-sm);
+}
+.chart-wrap .canvas-box{position:relative;height:220px}
+.chart-wrap .canvas-box.tall{height:280px}
+.chart-wrap .caption{font-size:11px;color:var(--ink-4);margin-top:6px;line-height:1.5}
+
+/* At-risk + slip */
+.risk-slip-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:18px}
+.atrisk-list{display:grid;gap:8px}
+.atrisk-row{
+  background:var(--bg-alt);border:1px solid var(--line-2);border-radius:var(--radius-sm);
+  padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+}
+.atrisk-row .rk-num{
+  font-family:var(--mono);font-size:11px;font-weight:800;color:var(--ink-4);
+  width:22px;height:22px;background:var(--bg);border:1px solid var(--line);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+}
+.atrisk-row .rk-body{min-width:0}
+.atrisk-row .rk-title{font-weight:700;color:var(--brand-black);font-size:13px;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.atrisk-row .rk-meta{font-size:11px;color:var(--ink-3);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.atrisk-row .rk-meta b{color:var(--brand-black);font-weight:700}
+.atrisk-row .rk-score{
+  font-family:var(--mono);font-size:11px;font-weight:800;
+  background:var(--rag-red-soft);color:#7A1F1F;padding:3px 8px;border-radius:4px;
+}
+.atrisk-empty{
+  background:var(--rag-green-soft);border:1px solid #BFE3CB;color:#176B33;
+  padding:14px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;
+}
+
+/* Workflow stage breakdown */
+.wfbreakdown{display:grid;gap:10px}
+.wfb-row{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 16px;display:grid;grid-template-columns:140px 1fr auto;gap:14px;align-items:center;
+}
+.wfb-row .wfb-name{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--brand-black);letter-spacing:.05em}
+.wfb-row .wfb-bar{display:flex;height:18px;border-radius:4px;overflow:hidden;background:var(--line-2);font-size:10px;font-weight:700;color:#fff}
+.wfb-row .wfb-bar > span{display:flex;align-items:center;justify-content:center;height:100%;min-width:0;overflow:hidden;text-shadow:0 0 2px rgba(0,0,0,.15)}
+.wfb-row .wfb-bar .s-completed{background:var(--st-completed)}
+.wfb-row .wfb-bar .s-wip{background:var(--st-wip)}
+.wfb-row .wfb-bar .s-ns{background:var(--ink-4)}
+.wfb-row .wfb-counts{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums;display:flex;gap:10px}
+.wfb-row .wfb-counts b{color:var(--brand-black);font-weight:700}
+
+/* Section heading shared */
+.dlv-section-title{
+  display:flex;align-items:baseline;gap:10px;margin:8px 0 10px;
+}
+.dlv-section-title h2{
+  margin:0;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand-black);font-weight:800;font-family:var(--mono);
+}
+.dlv-section-title .rule{flex:1;height:1px;background:var(--line)}
+
+/* Legend */
+.legend-row{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-3);margin-top:4px}
+.legend-row .lg{display:inline-flex;align-items:center;gap:5px}
+.legend-row .lg .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.legend-row .lg .sw.completed{background:var(--st-completed)}
+.legend-row .lg .sw.wip{background:var(--st-wip)}
+.legend-row .lg .sw.ns{background:var(--ink-4)}
+.legend-row .lg .sw.late{background:var(--st-wip-late)}
+
+/* ---------- WORKFLOW MATRIX TAB ---------- */
+.mx-statband{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.mx-stat{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 14px;position:relative;overflow:hidden;
+}
+.mx-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.mx-stat.done::before  {background:var(--st-completed)}
+.mx-stat.wip::before   {background:var(--st-wip)}
+.mx-stat.ready::before {background:var(--st-ready)}
+.mx-stat.yts::before   {background:var(--ink-4)}
+.mx-stat .lbl{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.mx-stat .val{font-size:24px;font-weight:800;color:var(--brand-black);letter-spacing:-.01em;margin-top:2px;line-height:1}
+.mx-stat .sub{font-size:11px;color:var(--ink-3);margin-top:3px}
+.mx-stat .sub b{color:var(--rag-red);font-weight:700}
+
+.mx-toolbar{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:10px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;
+}
+.mx-toolbar label{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.mx-toolbar select,.mx-toolbar input[type=search]{
+  appearance:none;background:var(--bg-alt);border:1px solid var(--line);border-radius:6px;
+  padding:6px 10px;font:inherit;font-size:13px;color:var(--ink);min-width:140px;
+}
+.mx-toolbar select:focus,.mx-toolbar input[type=search]:focus{outline:2px solid var(--brand-blue);outline-offset:1px;background:#fff}
+.mx-toolbar .field{display:flex;align-items:center;gap:6px}
+.mx-toolbar .clear-btn{
+  appearance:none;background:transparent;color:var(--ink-3);border:1px solid var(--line);
+  font:inherit;font-size:12px;padding:6px 10px;border-radius:6px;cursor:pointer;
+}
+.mx-toolbar .clear-btn:hover{color:var(--brand-black);border-color:var(--ink-3)}
+.mx-toolbar .result-count{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.mx-toolbar .result-count b{color:var(--brand-black);font-weight:700}
+
+.mx-summary{
+  background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--brand-yellow);
+  border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;
+  display:grid;gap:4px;font-size:13px;color:var(--ink-2);
+}
+.mx-summary b{color:var(--brand-black);font-weight:700}
+.mx-summary .late{color:var(--rag-red)}
+
+.mx-legend{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:12px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;
+}
+.mx-legend .lg-group{min-width:0}
+.mx-legend .lg-head{
+  display:flex;align-items:center;gap:6px;margin-bottom:4px;
+  font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--mono);color:var(--brand-black);
+}
+.mx-legend .lg-head .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.mx-legend .lg-head.KICKOFF .sw     {background:var(--ph-kickoff)}
+.mx-legend .lg-head.DISCOVERY .sw   {background:var(--ph-discovery)}
+.mx-legend .lg-head.DESIGN .sw      {background:var(--ph-design)}
+.mx-legend .lg-head.DEVELOPMENT .sw {background:var(--ph-development)}
+.mx-legend .lg-head.DELIVERY .sw    {background:var(--ph-delivery)}
+.mx-legend ol{margin:0;padding-left:20px;font-size:12px;color:var(--ink-2);line-height:1.55}
+.mx-legend ol li{padding:1px 0}
+.mx-legend ol li::marker{color:var(--ink-4);font-family:var(--mono);font-size:10px;font-weight:700}
+
+.mx-status-legend{
+  display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-3);
+  padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:10px;
+}
+.mx-status-legend .lg{display:inline-flex;align-items:center;gap:5px}
+.mx-status-legend .lg .sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid transparent}
+.mx-status-legend .sw.completed{background:var(--st-completed)}
+.mx-status-legend .sw.wip{background:var(--st-wip)}
+.mx-status-legend .sw.wip-late{background:var(--st-wip-late)}
+.mx-status-legend .sw.ready{background:var(--st-ready);border-color:#B8930E}
+.mx-status-legend .sw.yts{background:var(--line-2);border-color:#D6DBE2}
+.mx-status-legend .sw.missing{background:transparent;border:1px dashed var(--ink-4)}
+
+.matrix-wrap{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:auto;max-height:720px;
+}
+.matrix-table{border-collapse:separate;border-spacing:0;font-size:11px;width:max-content}
+.matrix-table th,.matrix-table td{padding:0;margin:0}
+.matrix-table thead th{
+  position:sticky;top:0;background:var(--bg);z-index:3;
+  font-size:10px;font-weight:800;letter-spacing:.02em;color:var(--ink-2);
+  border-bottom:2px solid var(--brand-black);padding:6px 0;text-align:center;
+  font-family:var(--mono);
+}
+.matrix-table thead th.mx-meta-head{
+  position:sticky;left:0;top:0;z-index:5;background:var(--bg);
+  text-align:left;padding:6px 12px;min-width:280px;max-width:340px;
+}
+.matrix-table thead th.mx-num{width:20px;min-width:20px;max-width:20px}
+.matrix-table thead th.mx-num.ph-KICKOFF     {background:rgba(111,66,193,0.10)}
+.matrix-table thead th.mx-num.ph-DISCOVERY   {background:rgba(19,118,212,0.10)}
+.matrix-table thead th.mx-num.ph-DESIGN      {background:rgba(27,79,140,0.10)}
+.matrix-table thead th.mx-num.ph-DEVELOPMENT {background:rgba(138,75,18,0.10)}
+.matrix-table thead th.mx-num.ph-DELIVERY    {background:rgba(43,170,82,0.10)}
+.matrix-table thead th.mx-num.first-of-phase{box-shadow:inset 2px 0 0 currentColor}
+.matrix-table thead th.mx-num.first-of-phase.ph-KICKOFF     {color:var(--ph-kickoff)}
+.matrix-table thead th.mx-num.first-of-phase.ph-DISCOVERY   {color:var(--ph-discovery)}
+.matrix-table thead th.mx-num.first-of-phase.ph-DESIGN      {color:var(--ph-design)}
+.matrix-table thead th.mx-num.first-of-phase.ph-DEVELOPMENT {color:var(--ph-development)}
+.matrix-table thead th.mx-num.first-of-phase.ph-DELIVERY    {color:var(--ph-delivery)}
+.matrix-table tbody tr:nth-child(even) td:not(.mx-meta){background:rgba(248,250,252,0.6)}
+.matrix-table tbody tr:hover td{background:#FFFBEC}
+.matrix-table td.mx-meta{
+  position:sticky;left:0;z-index:2;background:var(--bg);
+  padding:5px 12px;border-bottom:1px solid var(--line-2);
+  min-width:280px;max-width:340px;
+}
+.matrix-table tbody tr:nth-child(even) td.mx-meta{background:#F8FAFC}
+.matrix-table tbody tr:hover td.mx-meta{background:#FFFBEC}
+.matrix-table .mx-meta .row-rank{
+  font-family:var(--mono);font-size:10px;color:var(--ink-4);font-weight:700;
+  background:var(--bg-alt);padding:1px 5px;border-radius:3px;margin-right:6px;
+}
+.matrix-table .mx-meta .row-cohort{
+  display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;
+  padding:1px 5px;border-radius:3px;margin-right:6px;vertical-align:1px;font-family:var(--mono);
+}
+.matrix-table .mx-meta .row-cohort.p2{background:var(--brand-blue-50);color:var(--brand-blue-700)}
+.matrix-table .mx-meta .row-cohort.p3{background:#FFF6D6;color:#6E5300}
+.matrix-table .mx-meta .row-cohort.other{background:var(--bg-alt);color:var(--ink-3)}
+.matrix-table .mx-meta .row-title{
+  font-weight:600;color:var(--brand-black);font-size:12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;display:inline-block;vertical-align:middle;
+}
+.matrix-table .mx-meta .row-sme{font-size:10px;color:var(--ink-4);display:block;margin-top:2px;padding-left:2px}
+.matrix-table .mx-cell{
+  width:20px;min-width:20px;max-width:20px;height:20px;text-align:center;
+}
+.matrix-table .mx-cell > i{
+  display:inline-block;width:14px;height:14px;border-radius:3px;
+  border:1px solid transparent;vertical-align:middle;
+}
+.mx-cell.s-completed > i{background:var(--st-completed)}
+.mx-cell.s-wip > i      {background:var(--st-wip)}
+.mx-cell.s-wip-late > i {background:var(--st-wip-late);box-shadow:0 0 0 1px #fff inset}
+.mx-cell.s-ready > i    {background:var(--st-ready);border-color:#B8930E}
+.mx-cell.s-yts > i      {background:var(--line-2);border-color:#D6DBE2}
+.mx-cell.s-missing > i  {background:transparent;border:1px dashed var(--ink-4)}
+.mx-cell.first-of-phase{box-shadow:inset 2px 0 0 rgba(8,8,8,0.08)}
+.matrix-table tbody td{border-bottom:1px solid var(--line-2)}
+
+.mx-empty{
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius);
+  padding:36px 20px;text-align:center;color:var(--ink-3);font-size:13px;
+}
+
+/* ---------- WORKLOAD TAB ---------- */
+.wl-kpi-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
+.wl-conc{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 22px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+}
+.wl-conc::before{content:"";position:absolute;top:0;left:0;right:0;height:4px}
+.wl-conc.green::before{background:var(--rag-green)}
+.wl-conc.amber::before{background:var(--rag-amber)}
+.wl-conc.red::before  {background:var(--rag-red)}
+.wl-conc.gray::before {background:var(--rag-gray)}
+.wl-conc .eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.wl-conc .v-title{font-size:22px;font-weight:800;color:var(--brand-black);letter-spacing:-.01em;margin:0 0 4px;line-height:1.2}
+.wl-conc .v-title .accent.red{color:var(--rag-red)}
+.wl-conc .v-title .accent.amber{color:#B8930E}
+.wl-conc .v-title .accent.green{color:var(--rag-green)}
+.wl-conc .v-sub{margin:0;color:var(--ink-3);font-size:13px;line-height:1.5}
+.wl-conc .v-sub b{color:var(--brand-black);font-weight:700}
+
+.wl-toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.wl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.wl-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;box-shadow:var(--shadow-sm);
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;
+}
+.wl-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand-blue),var(--lm-blue));color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:14px;letter-spacing:.02em;flex-shrink:0;
+}
+.wl-card .name{font-weight:800;color:var(--brand-black);font-size:14px;letter-spacing:-.005em;line-height:1.2}
+.wl-card .name-meta{font-size:11px;color:var(--ink-4);margin-top:2px}
+.wl-card .chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.wl-card .chip{
+  font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 7px;border-radius:4px;font-family:var(--mono);
+}
+.wl-card .chip.open{background:var(--brand-blue-50);color:var(--brand-blue-700)}
+.wl-card .chip.done{background:var(--rag-green-soft);color:#176B33}
+.wl-card .chip.late{background:var(--rag-red-soft);color:#7A1F1F}
+.wl-card .chip.hrs{background:var(--bg-alt);color:var(--ink-2)}
+.wl-card .progress{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--line-2);margin-top:8px}
+.wl-card .progress .seg.done{background:var(--st-completed)}
+.wl-card .progress .seg.wip{background:var(--st-wip)}
+.wl-card .upcoming-head{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:10px;margin-bottom:4px}
+.wl-card .upcoming{margin:0;padding:0;list-style:none;display:grid;gap:3px;font-size:11px;color:var(--ink-2)}
+.wl-card .upcoming li{display:grid;grid-template-columns:1fr auto;gap:6px;line-height:1.4}
+.wl-card .upcoming li .lt{font-weight:600;color:var(--brand-black);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-card .upcoming li .lt small{color:var(--ink-4);font-weight:500}
+.wl-card .upcoming li .rt{color:var(--ink-3);font-family:var(--mono);font-size:10px;white-space:nowrap}
+.wl-card .upcoming li .rt.late{color:var(--rag-red);font-weight:700}
+
+/* Gantt */
+.wl-gantt-wrap{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.wl-gantt-scroll{overflow-x:auto;max-height:640px;overflow-y:auto}
+.wl-gantt{min-width:1000px;position:relative}
+.wl-axis{
+  display:grid;grid-template-columns:170px 1fr;
+  position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:2px solid var(--brand-black);
+}
+.wl-axis .corner{padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border-right:1px solid var(--line)}
+.wl-axis .months{position:relative;height:30px}
+.wl-axis .months .m{position:absolute;top:0;height:100%;display:flex;align-items:center;padding:0 6px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--ink-2);border-left:1px solid var(--line-2)}
+.wl-row{display:grid;grid-template-columns:170px 1fr;border-bottom:1px solid var(--line-2);align-items:center;min-height:32px}
+.wl-row:hover{background:#FFFBEC}
+.wl-row .lbl{padding:5px 12px;font-size:12px;font-weight:700;color:var(--brand-black);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--line-2);position:sticky;left:0;background:var(--bg);z-index:2}
+.wl-row:hover .lbl{background:#FFFBEC}
+.wl-row .lbl small{color:var(--ink-4);font-weight:500;font-size:10px}
+.wl-row .track{position:relative;height:28px}
+.wl-bar{
+  position:absolute;top:6px;height:16px;border-radius:3px;font-size:9px;color:#fff;
+  padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  display:flex;align-items:center;font-weight:600;letter-spacing:.01em;
+}
+.wl-bar.s-completed{background:var(--st-completed)}
+.wl-bar.s-wip{background:var(--st-wip)}
+.wl-bar.s-wip-late{background:var(--st-wip-late)}
+.wl-bar.s-not-started{background:var(--ink-4);opacity:.75}
+.wl-today{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed var(--brand-yellow-700);z-index:1;pointer-events:none}
+.wl-today::after{content:"Today";position:absolute;top:-22px;left:-19px;font-size:9px;color:var(--brand-black);background:var(--brand-yellow);padding:2px 6px;border-radius:3px;font-weight:800;letter-spacing:.04em}
+
+.wl-empty{padding:36px 20px;text-align:center;color:var(--ink-3);font-size:13px;background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius)}
+
+/* ---------- DELAYS TAB ---------- */
+.dl-rollup{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.dl-phase-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 13px;position:relative;overflow:hidden;
+}
+.dl-phase-card::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px}
+.dl-phase-card.ph-KICKOFF::before     {background:var(--ph-kickoff)}
+.dl-phase-card.ph-DISCOVERY::before   {background:var(--ph-discovery)}
+.dl-phase-card.ph-DESIGN::before      {background:var(--ph-design)}
+.dl-phase-card.ph-DEVELOPMENT::before {background:var(--ph-development)}
+.dl-phase-card.ph-DELIVERY::before    {background:var(--ph-delivery)}
+.dl-phase-card .nm{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--ink-3);margin-left:8px}
+.dl-phase-card .ct{font-size:26px;font-weight:800;color:var(--brand-black);margin-top:2px;margin-left:8px;letter-spacing:-.01em;line-height:1.1}
+.dl-phase-card .sub{font-size:11px;color:var(--ink-3);margin-left:8px;margin-top:2px}
+.dl-phase-card.zero .ct{color:var(--ink-4)}
+
+.dl-table-wrap{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:640px}
+.dl-table{width:100%;border-collapse:collapse;font-size:12px}
+.dl-table thead th{position:sticky;top:0;background:var(--bg);border-bottom:2px solid var(--brand-black);padding:8px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;user-select:none;white-space:nowrap}
+.dl-table thead th:hover{color:var(--brand-black)}
+.dl-table thead th.right{text-align:right}
+.dl-table tbody td{padding:7px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.dl-table tbody tr:hover{background:#FFFBEC}
+.dl-table .task-cell{font-weight:700;color:var(--brand-black)}
+.dl-table .course-cell{color:var(--ink-2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-table .phase-cell{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.dl-table .days-cell{text-align:right;font-variant-numeric:tabular-nums;font-weight:800}
+.dl-table .days-cell.high{color:var(--rag-red)}
+.dl-table .days-cell.med{color:#B8930E}
+.dl-table .reason-pill{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.02em;font-family:var(--mono)}
+.dl-table .reason-pill.end{background:var(--rag-red-soft);color:#7A1F1F}
+.dl-table .reason-pill.start{background:var(--rag-amber-soft);color:#6E5300}
+
+/* ---------- CRITICAL TASKS TAB ---------- */
+.ct-statband{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.ct-table-wrap{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:720px}
+.ct-table{width:100%;border-collapse:collapse;font-size:12px}
+.ct-table thead th{position:sticky;top:0;background:var(--bg);border-bottom:2px solid var(--brand-black);padding:9px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;user-select:none;white-space:nowrap}
+.ct-table thead th.right{text-align:right}
+.ct-table tbody td{padding:9px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.ct-table tbody tr:hover{background:#FFFBEC}
+.ct-table .rank-cell{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--ink-4);width:32px}
+.ct-table .course-cell{font-weight:700;color:var(--brand-black);max-width:300px}
+.ct-table .course-cell small{display:block;color:var(--ink-4);font-weight:500;margin-top:2px}
+.ct-table .pct-bar{display:flex;align-items:center;gap:8px}
+.ct-table .pct-bar .bar{flex:1;height:5px;background:var(--line-2);border-radius:3px;overflow:hidden;min-width:60px}
+.ct-table .pct-bar .bar > span{display:block;height:100%;background:var(--st-completed)}
+.ct-table .pct-bar .lbl{font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;font-weight:700;min-width:32px;text-align:right}
+.ct-table .days-cell.high{color:var(--rag-red);font-weight:800}
+.ct-table .days-cell.med{color:#B8930E;font-weight:700}
+.ct-table .score-pill{
+  font-family:var(--mono);font-size:11px;font-weight:800;
+  background:var(--rag-red-soft);color:#7A1F1F;padding:3px 8px;border-radius:4px;
+}
+.ct-table .score-pill.med{background:var(--rag-amber-soft);color:#6E5300}
+.ct-table .score-pill.lo{background:var(--bg-alt);color:var(--ink-3)}
+
+/* ---------- DISCREPANCIES TAB ---------- */
+.di-typegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.di-type-card{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;cursor:pointer;transition:border-color .15s,box-shadow .15s;
+  text-align:left;font:inherit;
+}
+.di-type-card:hover{border-color:var(--brand-black);box-shadow:var(--shadow-md)}
+.di-type-card[aria-selected="true"]{border-color:var(--brand-black);box-shadow:var(--shadow-md);background:#FFFCE6}
+.di-type-card .top{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.di-type-card .ct{font-size:24px;font-weight:800;color:var(--brand-black);letter-spacing:-.01em;line-height:1}
+.di-type-card .ct.zero{color:var(--rag-green)}
+.di-type-card .sev{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;font-family:var(--mono)}
+.di-type-card .sev.high{background:var(--rag-red-soft);color:#7A1F1F}
+.di-type-card .sev.medium{background:var(--rag-amber-soft);color:#6E5300}
+.di-type-card .sev.low{background:var(--bg-alt);color:var(--ink-3)}
+.di-type-card .title{margin:6px 0 2px;font-size:13px;font-weight:800;color:var(--brand-black);letter-spacing:-.005em}
+.di-type-card .desc{margin:0;font-size:11px;color:var(--ink-3);line-height:1.45}
+
+.di-issues-wrap{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:640px}
+.di-table{width:100%;border-collapse:collapse;font-size:12px}
+.di-table thead th{position:sticky;top:0;background:var(--bg);border-bottom:2px solid var(--brand-black);padding:8px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.di-table tbody td{padding:7px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.di-table tbody tr:hover{background:#FFFBEC}
+.di-table .di-msg{font-size:12px;color:var(--ink-2)}
+.di-table .di-msg b{color:var(--rag-red);font-weight:700}
+
+.di-allgood{
+  background:var(--rag-green-soft);border:1px solid #BFE3CB;border-radius:var(--radius);
+  padding:24px 20px;text-align:center;color:#176B33;font-size:14px;font-weight:600;
+}
+
+/* ---------- CLIENT UPLOAD TAB ---------- */
+.cl-statband{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.cl-week{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:12px;
+}
+.cl-week-head{
+  display:flex;align-items:center;gap:14px;padding:11px 16px;
+  background:var(--bg-alt);border-bottom:1px solid var(--line);
+}
+.cl-week-head .wk{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--brand-black);background:var(--bg);padding:3px 9px;border-radius:5px;border:1px solid var(--line)}
+.cl-week-head .rng{font-size:12px;color:var(--ink-3);font-weight:600;flex:1;min-width:0}
+.cl-week-head .ct{font-size:13px;font-weight:700;color:var(--brand-black)}
+.cl-week-head .ct.past{color:var(--rag-red)}
+.cl-week-head .ct.this{color:var(--brand-blue-700)}
+
+.cl-table{width:100%;border-collapse:collapse;font-size:12px}
+.cl-table thead th{background:#FCFDFE;padding:7px 16px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line-2)}
+.cl-table tbody td{padding:7px 16px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.cl-table tbody tr:hover{background:#FFFBEC}
+.cl-table tbody tr.past td{background:#FEF7F7}
+.cl-table .course-cell{font-weight:700;color:var(--brand-black)}
+.cl-table .cohort-cell{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.cl-table .date-cell{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.cl-table .status-cell{font-size:11px}
+.cl-status-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.02em;font-family:var(--mono)}
+.cl-status-badge.completed{background:var(--rag-green-soft);color:#176B33}
+.cl-status-badge.in-progress{background:var(--brand-blue-50);color:var(--brand-blue-700)}
+.cl-status-badge.not-started{background:var(--bg-alt);color:var(--ink-3)}
+.cl-status-badge.past-due{background:var(--rag-red-soft);color:#7A1F1F}
+
+@media (max-width: 980px){
+  .wl-kpi-row{grid-template-columns:1fr}
+  .dl-rollup{grid-template-columns:repeat(2,1fr)}
+  .di-typegrid{grid-template-columns:1fr}
+}
+
+/* ---------- DATE-WISE COMPLETION TAB ---------- */
+.dw-statband{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.dw-statband .mx-stat{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;position:relative;overflow:hidden}
+.dw-statband .mx-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--brand-blue)}
+.dw-statband .mx-stat.warn::before{background:var(--rag-amber)}
+
+.dw-toolbar{
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
+}
+.dw-toggle{
+  display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;
+  box-shadow:var(--shadow-sm);
+}
+.dw-toggle button{
+  appearance:none;background:transparent;color:var(--ink-2);border:0;
+  font:inherit;font-size:12px;font-weight:700;
+  padding:7px 14px;border-radius:6px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:background .12s,color .12s;
+}
+.dw-toggle button:hover{color:var(--brand-black)}
+.dw-toggle button[aria-selected="true"]{background:var(--brand-black);color:#fff}
+.dw-toggle button svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dw-copy{
+  appearance:none;background:var(--brand-blue);color:#fff;border:0;
+  font:inherit;font-size:12px;font-weight:700;
+  padding:8px 12px;border-radius:6px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:background .15s;
+}
+.dw-copy:hover{background:var(--brand-blue-700)}
+.dw-copy.copied{background:var(--rag-green)}
+.dw-copy svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dw-info{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.dw-info b{color:var(--brand-black);font-weight:700}
+
+/* Heatmap */
+.heatmap-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+.heatmap-card h3{margin:0 0 4px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);font-family:var(--mono)}
+.heatmap-card .hm-sub{margin:0 0 14px;font-size:12px;color:var(--ink-3)}
+.heatmap-scroll{overflow-x:auto;padding-bottom:8px}
+.heatmap-frame{display:inline-block;min-width:100%}
+.hm-months{
+  display:grid;grid-auto-flow:column;
+  grid-template-columns:auto repeat(var(--hm-weeks),14px);
+  gap:2px;align-items:end;margin-bottom:4px;
+  font-size:10px;color:var(--ink-3);
+}
+.hm-months .hm-corner{width:30px}
+.hm-months .hm-month{position:relative}
+.hm-months .hm-month span{position:absolute;left:0;bottom:0;white-space:nowrap;line-height:1}
+.hm-body{display:grid;grid-template-columns:auto 1fr;gap:6px}
+.hm-day-labels{
+  display:grid;grid-template-rows:repeat(7,14px);gap:2px;
+  font-size:9px;color:var(--ink-4);align-items:center;
+  width:30px;
+}
+.hm-grid{
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,14px);gap:2px;
+}
+.hm-cell{width:14px;height:14px;border-radius:3px;background:var(--line-2);transition:transform .08s}
+.hm-cell:hover{transform:scale(1.4);box-shadow:0 0 0 1px var(--brand-black)}
+.hm-cell.h0{background:#ECEEF1}
+.hm-cell.h1{background:#BFE3CB}
+.hm-cell.h2{background:#8DC63F}
+.hm-cell.h3{background:#2BAA52}
+.hm-cell.h4{background:#176B33}
+.hm-cell.future{background:transparent;border:1px solid #E5E8EC}
+.hm-cell.out{visibility:hidden}
+.heatmap-card .hm-legend{
+  display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:12px;
+  font-size:11px;color:var(--ink-3);
+}
+.heatmap-card .hm-legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.heatmap-card .hm-legend .sw.h0{background:#ECEEF1}
+.heatmap-card .hm-legend .sw.h1{background:#BFE3CB}
+.heatmap-card .hm-legend .sw.h2{background:#8DC63F}
+.heatmap-card .hm-legend .sw.h3{background:#2BAA52}
+.heatmap-card .hm-legend .sw.h4{background:#176B33}
+
+.hm-quick{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px;
+}
+.hm-quick .q{background:var(--bg-alt);border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:10px 12px}
+.hm-quick .q .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.hm-quick .q .val{font-size:18px;font-weight:800;color:var(--brand-black);margin-top:2px;line-height:1.1;letter-spacing:-.01em}
+.hm-quick .q .sub{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+/* List views */
+.dw-list{display:grid;gap:14px}
+.dw-group{
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;
+}
+.dw-group-head{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  background:var(--bg-alt);border-bottom:1px solid var(--line);
+}
+.dw-group-head .dw-date{
+  font-family:var(--mono);font-size:11px;font-weight:800;color:var(--brand-black);
+  background:var(--bg);border:1px solid var(--line);padding:3px 8px;border-radius:5px;
+}
+.dw-group-head .dw-title{font-size:13px;font-weight:700;color:var(--brand-black);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-group-head .dw-count{font-size:12px;color:var(--ink-3);font-weight:600}
+.dw-group-head .dw-count b{color:var(--brand-black)}
+
+.dw-table{width:100%;border-collapse:collapse;font-size:12px}
+.dw-table th,.dw-table td{padding:7px 16px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+.dw-table th{
+  font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  background:#FCFDFE;
+}
+.dw-table td{color:var(--ink-2)}
+.dw-table tbody tr:last-child td{border-bottom:0}
+.dw-table td.dw-cell-task{font-weight:600;color:var(--brand-black)}
+.dw-table td.dw-cell-phase{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.dw-table td.dw-cell-owner{color:var(--ink-2)}
+.dw-table td.dw-cell-hrs{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink-3)}
+
+.dw-empty{
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius);
+  padding:36px 20px;text-align:center;color:var(--ink-3);font-size:13px;
+}
+.dw-callout{
+  background:var(--bg-yellow-soft);border:1px solid #F1DC8F;color:#6E5300;
+  padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.dw-callout svg{width:14px;height:14px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2}
+
+@media (max-width: 980px){
+  .dlv-grid-top,.signoff-section,.risk-slip-grid{grid-template-columns:1fr}
+  .wfb-row{grid-template-columns:110px 1fr;gap:8px}
+  .wfb-row .wfb-counts{grid-column:1 / -1;justify-content:flex-end}
+  .matrix-table thead th.mx-meta-head,.matrix-table td.mx-meta{min-width:220px;max-width:260px}
+  .matrix-table .mx-meta .row-title{max-width:170px}
+}
+
+@media (max-width: 720px){
+  .topbar-inner{grid-template-columns:1fr;gap:10px;padding:12px 16px}
+  .brand-left,.brand-right{justify-content:center}
+  .topbar-meta{order:-1}
+  main{padding:18px 14px}
+  .panel-head h1{font-size:24px}
+  .verdict-card{grid-template-columns:1fr}
+  .verdict-card .v-actions{align-items:flex-start;flex-direction:row;flex-wrap:wrap}
+  .verdict-card .v-title{font-size:22px}
+  .phase-row{grid-template-columns:auto 1fr;gap:10px}
+  .phase-row .ph-stats{grid-column:1 / -1;flex-direction:row;text-align:left;align-items:baseline;gap:8px}
+  .lens-card{grid-template-columns:1fr;text-align:center}
+  .lens-card .donut-wrap{margin:0 auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== BRAND BAR ===================== -->
+<header class="topbar" role="banner">
+  <div class="topbar-inner">
+    <div class="brand-left" aria-label="LearningMate">
+      <svg class="lm-logo" viewBox="0 0 320 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LearningMate, A Straive Company">
+        <text x="0" y="34" font-family="Inter,'Proxima Nova',sans-serif" font-size="34" font-weight="800" fill="#8DC63F" letter-spacing="-1">Learning</text>
+        <text x="166" y="34" font-family="Inter,'Proxima Nova',sans-serif" font-size="34" font-weight="800" fill="#1B4F8C" letter-spacing="-1">Mate</text>
+        <line x1="2" y1="44" x2="270" y2="44" stroke="#1B4F8C" stroke-width="1" opacity="0.25"/>
+        <text x="2" y="58" font-family="Inter,'Proxima Nova',sans-serif" font-size="11" font-weight="700" fill="#1B4F8C" letter-spacing="3">A STRAIVE COMPANY</text>
+      </svg>
+    </div>
+
+    <div class="topbar-meta">
+      <div class="topbar-title">
+        <span>Microsoft OCs</span><span class="pill">Project Tracker</span>
+      </div>
+      <div class="topbar-sub">
+        <span class="health" id="health"><span class="health-dot loading" id="healthDot"></span> <span id="healthLabel">Loading…</span></span>
+        <span class="dot"></span>
+        <span id="lastRefresh">—</span>
+        <span class="dot"></span>
+        <span id="countStrip">— courses · — tasks</span>
+        <span class="dot"></span>
+        <button class="refresh-btn" id="refreshBtn" type="button" aria-label="Refresh now">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="brand-right" aria-label="Client: 2U">
+      <svg class="twou-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="2U Inc">
+        <circle cx="50" cy="50" r="48" fill="#1376D4"/>
+        <path d="M22 38 c0-8 6-14 14-14 c8 0 14 6 14 14 c0 6-4 11-10 14 l-12 8 h22 v8 h-32 v-8 l18-12 c4-2 6-5 6-9 c0-4-3-7-7-7 c-4 0-7 3-7 7 z" fill="#FFFFFF"/>
+        <path d="M55 24 h8 v30 c0 4 3 7 7 7 c4 0 7-3 7-7 v-30 h8 v30 c0 8-7 15-15 15 c-8 0-15-7-15-15 z" fill="#FFFFFF"/>
+        <circle cx="86" cy="74" r="5" fill="none" stroke="#FFFFFF" stroke-width="1"/>
+        <text x="86" y="77" font-family="Arial,sans-serif" font-size="6" fill="#FFFFFF" text-anchor="middle" font-weight="700">R</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== TAB BAR ===================== -->
+<nav class="tabbar" role="tablist" aria-label="Dashboard sections">
+  <div class="tabbar-inner">
+    <button class="tab-btn" role="tab" aria-selected="true" aria-controls="panel-narrative" data-tab="narrative">
+      <svg class="tab-icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Narrative</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-delivery" data-tab="delivery">
+      <svg class="tab-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+      <span>Delivery Status</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-matrix" data-tab="matrix">
+      <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Workflow Matrix</span>
+      <span class="tab-count" id="cnt-matrix">—</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-datewise" data-tab="datewise">
+      <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Date-wise Completion</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-workload" data-tab="workload">
+      <svg class="tab-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Team Workload</span>
+      <span class="tab-count" id="cnt-workload">—</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-delays" data-tab="delays">
+      <svg class="tab-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Critical Delays</span>
+      <span class="tab-count" id="cnt-delays">—</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-critical" data-tab="critical">
+      <svg class="tab-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>Critical Tasks</span>
+      <span class="tab-count" id="cnt-critical">—</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-discrepancies" data-tab="discrepancies">
+      <svg class="tab-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Discrepancies</span>
+      <span class="tab-count" id="cnt-discrepancies">—</span>
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-client" data-tab="client">
+      <svg class="tab-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span>Client Upload Dates</span>
+      <span class="tab-count" id="cnt-client">—</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ===================== MAIN ===================== -->
+<main>
+
+  <div id="banner-slot"></div>
+
+  <!-- NARRATIVE -->
+  <section class="panel" role="tabpanel" id="panel-narrative" aria-hidden="false" data-panel="narrative">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Landing</div>
+      <h1>Narrative <span class="accent">View</span></h1>
+      <p class="lede">Plain-language status read of Microsoft OCs — one paragraph per lifecycle phase with RAG markers and delivery commitments. Use <em>Copy as email</em> for stakeholder updates.</p>
+    </div>
+    <div id="narrative-content">
+      <div class="narrative-loading">Loading project status…</div>
+    </div>
+  </section>
+
+  <!-- DELIVERY -->
+  <section class="panel" role="tabpanel" id="panel-delivery" aria-hidden="true" data-panel="delivery">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Health Check</div>
+      <h1>Delivery <span class="accent">Status</span></h1>
+      <p class="lede">Verdict + bottleneck on top. Two-lens overview (courses delivered vs all-tasks complete). Signoff scorecards by cohort. Top 5 at-risk courses, slip distribution, burndown with forecast, and workflow stage breakdown.</p>
+    </div>
+    <div id="delivery-content">
+      <div class="narrative-loading">Loading delivery status…</div>
+    </div>
+  </section>
+
+  <!-- MATRIX -->
+  <section class="panel" role="tabpanel" id="panel-matrix" aria-hidden="true" data-panel="matrix">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Operations</div>
+      <h1>Workflow <span class="accent">Matrix</span></h1>
+      <p class="lede">A grid of every course (rows) × every lifecycle task (columns), colored by status. Hover any cell for details. Use the filters to focus on a cohort, SME, or specific course.</p>
+    </div>
+    <div id="matrix-content">
+      <div class="narrative-loading">Loading workflow matrix…</div>
+    </div>
+  </section>
+
+  <!-- DATEWISE -->
+  <section class="panel" role="tabpanel" id="panel-datewise" aria-hidden="true" data-panel="datewise">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Throughput</div>
+      <h1>Date-wise <span class="accent">Completion</span></h1>
+      <p class="lede">Three views of when work landed: a calendar heatmap by day, a chronological list of completions per date, and a per-course list of every task closed. The list views have a <em>Copy as table</em> button for Excel/Sheets paste.</p>
+    </div>
+    <div id="datewise-content">
+      <div class="narrative-loading">Loading completion history…</div>
+    </div>
+  </section>
+
+  <!-- WORKLOAD -->
+  <section class="panel" role="tabpanel" id="panel-workload" aria-hidden="true" data-panel="workload">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> People</div>
+      <h1>Team <span class="accent">Workload</span></h1>
+      <p class="lede">Who's loaded with what. Concentration KPI flags single-point-of-failure risk. Switch between member cards and a Gantt-style calendar of planned work.</p>
+    </div>
+    <div id="workload-content">
+      <div class="narrative-loading">Loading team workload…</div>
+    </div>
+  </section>
+
+  <!-- DELAYS -->
+  <section class="panel" role="tabpanel" id="panel-delays" aria-hidden="true" data-panel="delays">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Risk</div>
+      <h1>Critical <span class="accent">Delays</span></h1>
+      <p class="lede">Every task that's slipped past its planned date. Stage rollup at top, filterable table below.</p>
+    </div>
+    <div id="delays-content">
+      <div class="narrative-loading">Loading delays…</div>
+    </div>
+  </section>
+
+  <!-- CRITICAL -->
+  <section class="panel" role="tabpanel" id="panel-critical" aria-hidden="true" data-panel="critical">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Risk</div>
+      <h1>Critical <span class="accent">Tasks</span></h1>
+      <p class="lede">Courses at risk of missing their Delivery date. Ranked by a composite risk score combining overdue tasks, open work, and proximity to delivery.</p>
+    </div>
+    <div id="critical-content">
+      <div class="narrative-loading">Loading critical tasks…</div>
+    </div>
+  </section>
+
+  <!-- DISCREPANCIES -->
+  <section class="panel" role="tabpanel" id="panel-discrepancies" aria-hidden="true" data-panel="discrepancies">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Hygiene</div>
+      <h1>Discrepancies</h1>
+      <p class="lede">Sheet-hygiene issues that distort every other tab. Click any pattern card to drill in.</p>
+    </div>
+    <div id="discrepancies-content">
+      <div class="narrative-loading">Scanning the sheet…</div>
+    </div>
+  </section>
+
+  <!-- CLIENT -->
+  <section class="panel" role="tabpanel" id="panel-client" aria-hidden="true" data-panel="client">
+    <div class="panel-head">
+      <div class="eyebrow"><span class="dot"></span> Handoff</div>
+      <h1>Client <span class="accent">Upload Dates</span></h1>
+      <p class="lede">When is each course's 2U Course Upload planned? The only task in the lifecycle owned by the client (Role: 2U), grouped by week.</p>
+    </div>
+    <div id="client-content">
+      <div class="narrative-loading">Loading client upload schedule…</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="left">
+    <span>Source: <code id="footTab">—</code></span>
+    <span class="dot"></span>
+    <span>Auto-refresh: every <code id="footRefresh">—</code> min</span>
+    <span class="dot"></span>
+    <span>Generated: <code id="footGenerated">—</code></span>
+  </div>
+  <div>Dashboard reads sheet only · fixes go through the sheet</div>
+</footer>
+
+<script>
+/* ============================================================
+   CONFIG — fill in / adjust these four constants
+   ============================================================ */
+const CONFIG = {
+  SHEET_ID:         "1vSFzIQehgQqmPRSvOWmajF7yIf11ApNbiYw6Jd_jTZ4",
+  TAB_NAME:         "Tasks",
+  APPS_SCRIPT_URL:  "https://script.google.com/a/macros/learningmate.com/s/AKfycbw5vY-fYer3CLoIeBF8HTVm3dTU96wIdf5IrX7ZMsjGBiRH2P_QV78Nxgd1pLc19Rnmww/exec",
+  AUTO_REFRESH_MIN: 5,
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  raw: null,            // last JSONP payload
+  rows: [],             // task rows
+  courses: [],          // grouped by rank+title
+  lastFetchAt: null,
+  fetchInFlight: false,
+  fetchError: null,
+  refreshTimer: null,
+  charts: {},           // chart.js instances keyed by canvas id
+  matrixFilters: { cohort: "all", sme: "all", search: "", sort: "default" },
+  datewiseView: "heatmap",  // heatmap | bydate | bycourse
+  workloadFilters:      { sort: "overdue", view: "list" },
+  delaysFilters:        { phase: "all", owner: "all", reason: "all", search: "", sort: "days" },
+  criticalFilters:      { cohort: "all", sort: "score" },
+  discrepanciesFilter:  "all",  // 'all' or specific type
+  clientFilters:        { cohort: "all", status: "all" },
+  tabRendered: new Set(),   // names of tabs rendered for current data (lazy rendering)
+};
+
+/* ============================================================
+   JSONP FETCH
+   ============================================================ */
+function jsonp(url, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const cb = "__jsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    const sep = url.indexOf("?") === -1 ? "?" : "&";
+    const script = document.createElement("script");
+    let settled = false;
+    const cleanup = () => {
+      try { delete window[cb]; } catch(e){ window[cb] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(t);
+    };
+    const t = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Fetch timed out after " + timeoutMs + " ms"));
+    }, timeoutMs);
+    window[cb] = (data) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Network / script load error"));
+    };
+    script.src = url + sep + "callback=" + cb + "&_=" + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   AGGREGATION
+   ============================================================ */
+function groupCourses(rows){
+  const byKey = new Map();
+  for (const r of rows) {
+    const key = (r.rank || "") + "::" + (r.course_title || "");
+    let c = byKey.get(key);
+    if (!c) {
+      c = {
+        key,
+        rank: r.rank,
+        title: r.course_title,
+        sme: r.sme,
+        lm_2u_hire: r.lm_2u_hire,
+        course_link: r.course_link,
+        course_duration: r.course_duration,
+        phase: r.phase,             // PHASE 2 / PHASE 3
+        tasks: [],
+      };
+      byKey.set(key, c);
+    }
+    c.tasks.push(r);
+  }
+  return Array.from(byKey.values()).sort((a,b) => {
+    const pa = (a.phase||""), pb = (b.phase||"");
+    if (pa !== pb) return pa.localeCompare(pb);
+    return (a.rank||0) - (b.rank||0);
+  });
+}
+
+function countByStatus(rows){
+  const out = { completed:0, in_progress:0, not_started:0, other:0, total:rows.length };
+  for (const r of rows) {
+    const s = String(r.status||"").trim().toLowerCase();
+    if (s === "completed") out.completed++;
+    else if (s === "in progress") out.in_progress++;
+    else if (s === "not started") out.not_started++;
+    else out.other++;
+  }
+  return out;
+}
+
+function uniqueValues(rows, key){
+  const set = new Set();
+  for (const r of rows) {
+    const v = r[key];
+    if (v !== "" && v != null) set.add(v);
+  }
+  return Array.from(set).sort();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $ = (sel, root) => (root||document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root||document).querySelectorAll(sel));
+
+function setHealth(state_, label){
+  const dot = $("#healthDot");
+  const lab = $("#healthLabel");
+  dot.classList.remove("ok","err","loading");
+  dot.classList.add(state_);
+  lab.textContent = label;
+}
+
+function renderTopStrip(){
+  const ts = state.lastFetchAt ? state.lastFetchAt.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "—";
+  $("#lastRefresh").textContent = "Updated " + ts;
+  $("#countStrip").textContent =
+    (state.courses.length ? state.courses.length : "—") + " courses · " +
+    (state.rows.length    ? state.rows.length    : "—") + " tasks";
+
+  $("#footTab").textContent       = state.raw && state.raw.tab ? state.raw.tab : CONFIG.TAB_NAME;
+  $("#footRefresh").textContent   = String(CONFIG.AUTO_REFRESH_MIN);
+  $("#footGenerated").textContent = state.raw && state.raw.generatedAt
+    ? new Date(state.raw.generatedAt).toLocaleString()
+    : "—";
+}
+
+function renderTabCounts(){
+  const c = state.courses.length;
+  if (c) {
+    $("#cnt-matrix").textContent = c;
+    $("#cnt-workload").textContent = uniqueValues(state.rows, "team_member_name").length;
+    $("#cnt-client").textContent = state.rows.filter(r => r.task === "2U Course Upload").length;
+
+    // Lightweight pre-computes for tabs we haven't built yet
+    const today = new Date(); today.setHours(0,0,0,0);
+    const overdue = state.rows.filter(r => {
+      const s = String(r.status||"").toLowerCase();
+      if (s === "completed") return false;
+      const pe = r.planned_end_date ? new Date(r.planned_end_date) : null;
+      return pe && pe < today;
+    });
+    $("#cnt-delays").textContent = overdue.length;
+
+    $("#cnt-critical").textContent = "—";
+
+    // Discrepancies: phase-order violations (later phase completed while earlier not)
+    const phaseOrder = {KICKOFF:1, DISCOVERY:2, DESIGN:3, DEVELOPMENT:4, DELIVERY:5};
+    let viol = 0;
+    for (const co of state.courses) {
+      const maxCompleted = co.tasks
+        .filter(t => String(t.status||"").toLowerCase() === "completed")
+        .map(t => phaseOrder[t.lifecycle_phase] || 0)
+        .reduce((a,b)=>Math.max(a,b), 0);
+      const earlyOpen = co.tasks.some(t => {
+        const ord = phaseOrder[t.lifecycle_phase] || 0;
+        const s = String(t.status||"").toLowerCase();
+        return ord < maxCompleted && (s === "not started" || s === "in progress");
+      });
+      if (earlyOpen) viol++;
+    }
+    $("#cnt-discrepancies").textContent = viol;
+  }
+}
+
+function statTile(label, value, sub){
+  return '<div class="stat"><div class="stat-label">' + escapeHtml(label) + '</div>' +
+         '<div class="stat-value">' + escapeHtml(value) + '</div>' +
+         (sub ? '<div class="stat-sub">' + escapeHtml(sub) + '</div>' : '') +
+         '</div>';
+}
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+
+function renderBanner(){
+  const slot = $("#banner-slot");
+  if (state.fetchError) {
+    slot.innerHTML =
+      '<div class="banner error">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+      '<div>Could not load data: ' + escapeHtml(state.fetchError) + '</div>' +
+      '</div>';
+  } else if (!state.raw) {
+    slot.innerHTML =
+      '<div class="banner loading">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>' +
+      '<div>Loading data from Apps Script…</div>' +
+      '</div>';
+  } else {
+    slot.innerHTML = "";
+  }
+}
+
+/* ============================================================
+   TEAM WORKLOAD TAB
+   ============================================================ */
+function analyzeWorkload(rows){
+  const today = todayMidnight();
+  const byMember = new Map();
+  let unassigned = 0;
+
+  rows.forEach(r => {
+    const name = String(r.team_member_name || "").trim();
+    if (!name) { unassigned++; return; }
+    let m = byMember.get(name);
+    if (!m) {
+      m = { name, role: r.role || "", total:0, completed:0, in_progress:0, not_started:0,
+            overdue:0, estimated:0, actual:0, phases:{}, courses:new Set(), upcoming:[] };
+      byMember.set(name, m);
+    }
+    m.total++;
+    const status = statusOf(r);
+    if (status === "completed") m.completed++;
+    else if (status === "in progress") m.in_progress++;
+    else m.not_started++;
+
+    if (status !== "completed") {
+      const pe = parseSheetDate(r.planned_end_date);
+      if (pe && pe < today) m.overdue++;
+    }
+    if (typeof r.estimated_effort === "number") m.estimated += r.estimated_effort;
+    if (typeof r.actual_hours_taken === "number") m.actual += r.actual_hours_taken;
+    m.courses.add(r.course_title);
+
+    const ph = r.lifecycle_phase || "—";
+    if (!m.phases[ph]) m.phases[ph] = 0;
+    m.phases[ph]++;
+
+    if (status !== "completed") {
+      m.upcoming.push({
+        task: r.task, course: r.course_title, phase: r.lifecycle_phase,
+        plannedStart: r.planned_start_date, plannedEnd: r.planned_end_date,
+        actualStart: r.actual_start_date,   actualEnd: r.actual_end_date,
+        status,
+        isLate: (function(){
+          const pe = parseSheetDate(r.planned_end_date);
+          return pe && pe < today;
+        })(),
+      });
+    }
+  });
+
+  byMember.forEach(m => {
+    m.upcoming.sort((a,b) => {
+      const ae = parseSheetDate(a.plannedEnd), be = parseSheetDate(b.plannedEnd);
+      if (!ae && !be) return 0;
+      if (!ae) return 1;
+      if (!be) return -1;
+      return ae - be;
+    });
+  });
+
+  const members = Array.from(byMember.values());
+  const totalOpen = members.reduce((s,m) => s + m.in_progress + m.not_started, 0);
+  const sortedByOpen = members.slice().sort((a,b) => (b.in_progress + b.not_started) - (a.in_progress + a.not_started));
+  const top = sortedByOpen[0];
+  const topOpen = top ? (top.in_progress + top.not_started) : 0;
+  const topShare = totalOpen > 0 ? Math.round(100 * topOpen / totalOpen) : 0;
+  let rag = "gray";
+  if (totalOpen === 0) rag = "gray";
+  else if (topShare > 30) rag = "red";
+  else if (topShare > 20) rag = "amber";
+  else rag = "green";
+
+  return { members, unassigned, totalOpen,
+    concentration: { topMember: top ? top.name : null, topOpen, topShare, rag },
+  };
+}
+
+function initials(name){
+  const parts = String(name).trim().split(/\s+/);
+  return (parts[0] ? parts[0][0] : "").toUpperCase() + (parts.length > 1 ? parts[parts.length-1][0].toUpperCase() : "");
+}
+
+function renderWorkload(){
+  const slot = $("#workload-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) { slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return; }
+  if (!state.rows.length) { slot.innerHTML = '<div class="narrative-loading">Loading team workload…</div>'; return; }
+
+  const w = analyzeWorkload(state.rows);
+  const f = state.workloadFilters;
+  let sorted = w.members.slice();
+  if (f.sort === "overdue") sorted.sort((a,b) => b.overdue - a.overdue || (b.in_progress + b.not_started) - (a.in_progress + a.not_started));
+  else if (f.sort === "work") sorted.sort((a,b) => (b.in_progress + b.not_started) - (a.in_progress + a.not_started));
+  else if (f.sort === "alpha") sorted.sort((a,b) => a.name.localeCompare(b.name));
+
+  slot.innerHTML =
+    workloadKPIs(w) +
+    workloadToolbar(f, w) +
+    (f.view === "list" ? workloadList(sorted) : workloadGantt(sorted));
+
+  $$('[data-wl-sort]').forEach(el => el.addEventListener("change", e => { state.workloadFilters.sort = e.target.value; renderWorkload(); }));
+  $$('[data-wl-view]').forEach(btn => btn.addEventListener("click", () => { state.workloadFilters.view = btn.getAttribute("data-wl-view"); renderWorkload(); }));
+
+  state.tabRendered.add("workload");
+}
+
+function workloadKPIs(w){
+  const c = w.concentration;
+  const tone = c.rag;
+  const title = c.topMember
+    ? '<span class="accent ' + tone + '">' + escapeHtml(c.topMember) + '</span> holds <span class="accent ' + tone + '">' + c.topShare + '%</span> of open work'
+    : 'No open work assigned';
+  const sub = c.topMember
+    ? '<b>' + c.topOpen + '</b> open tasks (' + c.topShare + '% of <b>' + w.totalOpen + '</b> total). ' +
+      (tone === "red" ? 'Single-point-of-failure risk — spread the load.' :
+       tone === "amber" ? 'Watch for over-concentration if this share grows.' :
+       'Load looks reasonably balanced.')
+    : 'Either no work in flight or no team members are assigned yet.';
+  return (
+    '<div class="wl-kpi-row">' +
+      '<div class="wl-conc ' + tone + '">' +
+        '<div class="eyebrow">Concentration Risk</div>' +
+        '<h2 class="v-title">' + title + '</h2>' +
+        '<p class="v-sub">' + sub + '</p>' +
+      '</div>' +
+      '<div class="mx-stat done"><div class="lbl">People assigned</div><div class="val">' + w.members.length + '</div><div class="sub">distinct names on tasks</div></div>' +
+      '<div class="mx-stat wip"><div class="lbl">Open assigned tasks</div><div class="val">' + w.totalOpen + '</div><div class="sub">' + w.unassigned + ' tasks have no owner</div></div>' +
+    '</div>'
+  );
+}
+
+function workloadToolbar(f, w){
+  const sortOpts = [
+    ["overdue", "Most overdue"],
+    ["work",    "Most open work"],
+    ["alpha",   "Alphabetical"],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.sort===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+  return (
+    '<div class="wl-toolbar">' +
+      '<div class="field"><label>Sort</label><select data-wl-sort>' + sortOpts + '</select></div>' +
+      '<div class="dw-toggle">' +
+        '<button type="button" data-wl-view="list" aria-selected="' + (f.view==="list"?"true":"false") + '">List</button>' +
+        '<button type="button" data-wl-view="gantt" aria-selected="' + (f.view==="gantt"?"true":"false") + '">Calendar</button>' +
+      '</div>' +
+      '<div class="dw-info"><b>' + w.members.length + '</b> people · <b>' + w.totalOpen + '</b> open · <b>' + w.unassigned + '</b> unassigned</div>' +
+    '</div>'
+  );
+}
+
+function workloadList(members){
+  if (members.length === 0) return '<div class="wl-empty">No one is assigned to any task yet.</div>';
+  return '<div class="wl-list">' + members.map(m => {
+    const open = m.in_progress + m.not_started;
+    const completedPct = m.total ? (100 * m.completed / m.total) : 0;
+    const wipPct       = m.total ? (100 * m.in_progress / m.total) : 0;
+    const upcoming = m.upcoming.slice(0, 3);
+    const upcomingHTML = upcoming.length
+      ? '<div class="upcoming-head">Up next</div>' +
+        '<ul class="upcoming">' + upcoming.map(u => {
+          const peLabel = u.plannedEnd ? u.plannedEnd : "no date";
+          return '<li><span class="lt">' + escapeHtml(u.task) + '<small> · ' + escapeHtml(u.course) + '</small></span><span class="rt' + (u.isLate ? ' late' : '') + '">' + escapeHtml(peLabel) + (u.isLate ? ' ⚠' : '') + '</span></li>';
+        }).join("") + '</ul>'
+      : '';
+    return '<div class="wl-card">' +
+      '<div class="wl-avatar">' + escapeHtml(initials(m.name)) + '</div>' +
+      '<div style="min-width:0">' +
+        '<div class="name">' + escapeHtml(m.name) + '</div>' +
+        '<div class="name-meta">' + m.courses.size + ' course' + (m.courses.size===1?'':'s') + (m.role ? ' · ' + escapeHtml(m.role) : '') + '</div>' +
+        '<div class="chips">' +
+          '<span class="chip open">' + open + ' open</span>' +
+          '<span class="chip done">' + m.completed + ' done</span>' +
+          (m.overdue > 0 ? '<span class="chip late">' + m.overdue + ' late</span>' : '') +
+          (m.estimated > 0 ? '<span class="chip hrs">' + m.actual.toFixed(0) + '/' + m.estimated.toFixed(0) + ' hrs</span>' : '') +
+        '</div>' +
+        '<div class="progress" title="' + m.completed + ' done · ' + m.in_progress + ' in progress · ' + m.not_started + ' not started">' +
+          (completedPct > 0 ? '<span class="seg done" style="width:' + completedPct + '%"></span>' : '') +
+          (wipPct > 0 ? '<span class="seg wip" style="width:' + wipPct + '%"></span>' : '') +
+        '</div>' +
+        upcomingHTML +
+      '</div>' +
+    '</div>';
+  }).join("") + '</div>';
+}
+
+function workloadGantt(members){
+  const today = todayMidnight();
+  // Time range from all dated open tasks
+  let minD = today, maxD = new Date(today.getTime() + 30 * 86400000);
+  members.forEach(m => m.upcoming.forEach(u => {
+    const ps = parseSheetDate(u.plannedStart), pe = parseSheetDate(u.plannedEnd);
+    if (ps && ps < minD) minD = ps;
+    if (pe && pe > maxD) maxD = pe;
+  }));
+  // Snap to month boundaries
+  minD = new Date(minD.getFullYear(), minD.getMonth(), 1);
+  maxD = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 0);
+  const totalDays = Math.max(7, Math.round((maxD - minD) / 86400000) + 1);
+
+  // Month markers
+  const monthMarkers = [];
+  let mPtr = new Date(minD);
+  while (mPtr <= maxD) {
+    const dayOffset = Math.round((mPtr - minD) / 86400000);
+    const monthEnd = new Date(mPtr.getFullYear(), mPtr.getMonth() + 1, 0);
+    const monthEndOffset = Math.round((monthEnd - minD) / 86400000) + 1;
+    const widthPct = ((monthEndOffset - dayOffset) / totalDays) * 100;
+    monthMarkers.push({
+      label: mPtr.toLocaleDateString(undefined, { month:"short", year:"2-digit" }),
+      leftPct: (dayOffset / totalDays) * 100,
+      widthPct,
+    });
+    mPtr = new Date(mPtr.getFullYear(), mPtr.getMonth() + 1, 1);
+  }
+
+  const todayPct = ((today - minD) / 86400000 / totalDays) * 100;
+
+  function barFor(u){
+    const ps = parseSheetDate(u.plannedStart);
+    const pe = parseSheetDate(u.plannedEnd);
+    if (!ps && !pe) return null;
+    const start = ps || pe;
+    const end   = pe || ps;
+    const startOff = Math.round((start - minD) / 86400000);
+    const endOff   = Math.round((end - minD) / 86400000) + 1;
+    const left = (startOff / totalDays) * 100;
+    const width = Math.max(0.5, ((endOff - startOff) / totalDays) * 100);
+    const statusClass = (u.status === "in progress" ? (u.isLate ? "s-wip-late" : "s-wip") : "s-not-started");
+    const tip = u.task + " — " + u.course + "\nStatus: " + u.status + (u.plannedStart ? "\nStart: " + u.plannedStart : "") + (u.plannedEnd ? "\nEnd: " + u.plannedEnd : "");
+    return '<div class="wl-bar ' + statusClass + '" style="left:' + left + '%;width:' + width + '%" title="' + escapeHtml(tip) + '">' + escapeHtml(u.task) + '</div>';
+  }
+
+  const memberRows = members.filter(m => m.upcoming.some(u => u.plannedStart || u.plannedEnd)).map(m => {
+    const bars = m.upcoming.map(barFor).filter(Boolean).join("");
+    return '<div class="wl-row"><div class="lbl">' + escapeHtml(m.name) + ' <small>(' + (m.in_progress + m.not_started) + ' open)</small></div>' +
+      '<div class="track">' +
+        '<div class="wl-today" style="left:' + todayPct + '%"></div>' +
+        bars +
+      '</div></div>';
+  }).join("");
+
+  if (!memberRows) return '<div class="wl-empty">No planned dates on any open assigned tasks — populate Planned Start / End on the Tasks tab to fill the Gantt.</div>';
+
+  const monthHTML = monthMarkers.map(m =>
+    '<div class="m" style="left:' + m.leftPct + '%;width:' + m.widthPct + '%">' + escapeHtml(m.label) + '</div>'
+  ).join("");
+
+  return (
+    '<div class="wl-gantt-wrap"><div class="wl-gantt-scroll"><div class="wl-gantt">' +
+      '<div class="wl-axis"><div class="corner">Member</div><div class="months">' + monthHTML + '</div></div>' +
+      memberRows +
+    '</div></div></div>'
+  );
+}
+
+/* ============================================================
+   CRITICAL DELAYS TAB
+   ============================================================ */
+function analyzeDelays(rows){
+  const today = todayMidnight();
+  const items = [];
+  rows.forEach(r => {
+    const status = statusOf(r);
+    if (status === "completed") return;
+    const pe = parseSheetDate(r.planned_end_date);
+    const ps = parseSheetDate(r.planned_start_date);
+    let reason = null, daysLate = 0;
+    if (pe && pe < today) {
+      reason = "end";
+      daysLate = Math.round((today - pe) / 86400000);
+    } else if (status === "not started" && ps && ps < today) {
+      reason = "start";
+      daysLate = Math.round((today - ps) / 86400000);
+    }
+    if (reason) {
+      items.push({
+        course: r.course_title, cohort: r.phase, phase: r.lifecycle_phase,
+        task: r.task, role: r.role, owner: r.team_member_name || "",
+        plannedStart: r.planned_start_date, plannedEnd: r.planned_end_date,
+        status: r.status, reason, daysLate,
+      });
+    }
+  });
+  const byPhase = {};
+  LIFECYCLE_PHASES.forEach(p => byPhase[p] = 0);
+  items.forEach(i => byPhase[i.phase] = (byPhase[i.phase] || 0) + 1);
+  return { items, byPhase, total: items.length };
+}
+
+function renderDelays(){
+  const slot = $("#delays-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) { slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return; }
+  if (!state.rows.length) { slot.innerHTML = '<div class="narrative-loading">Loading delays…</div>'; return; }
+
+  const d = analyzeDelays(state.rows);
+  const f = state.delaysFilters;
+
+  // Filter
+  const q = (f.search || "").trim().toLowerCase();
+  let filtered = d.items.filter(i => {
+    if (f.phase !== "all" && i.phase !== f.phase) return false;
+    if (f.owner !== "all" && i.owner !== f.owner) return false;
+    if (f.reason !== "all" && i.reason !== f.reason) return false;
+    if (q && !(String(i.course).toLowerCase().includes(q) || String(i.task).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  // Sort
+  if (f.sort === "days")        filtered.sort((a,b) => b.daysLate - a.daysLate);
+  else if (f.sort === "course") filtered.sort((a,b) => String(a.course).localeCompare(b.course));
+  else if (f.sort === "phase")  filtered.sort((a,b) => (PHASE_RANK[a.phase]||9) - (PHASE_RANK[b.phase]||9) || b.daysLate - a.daysLate);
+
+  // Build phase rollup
+  const rollup = LIFECYCLE_PHASES.map(p =>
+    '<div class="dl-phase-card ph-' + p + (d.byPhase[p] === 0 ? ' zero' : '') + '">' +
+      '<div class="nm">' + p + '</div>' +
+      '<div class="ct">' + (d.byPhase[p] || 0) + '</div>' +
+      '<div class="sub">' + (d.byPhase[p] === 1 ? 'overdue task' : 'overdue tasks') + '</div>' +
+    '</div>'
+  ).join("");
+
+  // Filter UI
+  const phaseOpts = ['<option value="all"' + (f.phase==="all"?' selected':'') + '>All phases</option>']
+    .concat(LIFECYCLE_PHASES.map(p => '<option value="' + p + '"' + (f.phase===p?' selected':'') + '>' + p + '</option>')).join("");
+  const owners = Array.from(new Set(d.items.map(i => i.owner).filter(Boolean))).sort();
+  const ownerOpts = ['<option value="all"' + (f.owner==="all"?' selected':'') + '>All owners</option>']
+    .concat(owners.map(o => '<option value="' + escapeHtml(o) + '"' + (f.owner===o?' selected':'') + '>' + escapeHtml(o) + '</option>')).join("");
+  const reasonOpts = [
+    ["all","Any reason"],["end","Past planned end"],["start","Past planned start"],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.reason===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+  const sortOpts = [
+    ["days","Days late (desc)"],["course","Course (A→Z)"],["phase","Phase order"],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.sort===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+
+  const tbody = filtered.length === 0
+    ? '<tr><td colspan="7" style="padding:36px 12px;text-align:center;color:var(--ink-3)">No delayed tasks match the current filters.</td></tr>'
+    : filtered.map(i => {
+        const sevCls = i.daysLate >= 14 ? "high" : (i.daysLate >= 4 ? "med" : "");
+        return '<tr>' +
+          '<td class="course-cell" title="' + escapeHtml(i.course) + '">' + escapeHtml(i.course) + '</td>' +
+          '<td class="phase-cell">' + escapeHtml(i.phase) + '</td>' +
+          '<td class="task-cell">' + escapeHtml(i.task) + '</td>' +
+          '<td>' + escapeHtml(i.owner || "—") + '</td>' +
+          '<td><span class="reason-pill ' + i.reason + '">' + (i.reason === "end" ? "Past planned end" : "Past planned start") + '</span></td>' +
+          '<td>' + escapeHtml(i.reason === "end" ? (i.plannedEnd||"—") : (i.plannedStart||"—")) + '</td>' +
+          '<td class="days-cell ' + sevCls + '">' + i.daysLate + 'd</td>' +
+        '</tr>';
+      }).join("");
+
+  slot.innerHTML =
+    '<div class="dl-rollup">' + rollup + '</div>' +
+    '<div class="mx-toolbar">' +
+      '<div class="field"><label>Phase</label><select data-dl="phase">' + phaseOpts + '</select></div>' +
+      '<div class="field"><label>Owner</label><select data-dl="owner">' + ownerOpts + '</select></div>' +
+      '<div class="field"><label>Reason</label><select data-dl="reason">' + reasonOpts + '</select></div>' +
+      '<div class="field"><label>Sort</label><select data-dl="sort">' + sortOpts + '</select></div>' +
+      '<div class="field"><label>Search</label><input type="search" data-dl="search" placeholder="Course or task…" value="' + escapeHtml(f.search) + '" /></div>' +
+      '<button class="clear-btn" data-dl="clear" type="button">Clear</button>' +
+      '<div class="result-count"><b>' + filtered.length + '</b> of ' + d.total + ' overdue</div>' +
+    '</div>' +
+    '<div class="dl-table-wrap"><table class="dl-table">' +
+      '<thead><tr>' +
+        '<th>Course</th><th>Phase</th><th>Task</th><th>Owner</th><th>Reason</th><th>Planned</th><th class="right">Late</th>' +
+      '</tr></thead>' +
+      '<tbody>' + tbody + '</tbody>' +
+    '</table></div>';
+
+  // Wire
+  $$('[data-dl]').forEach(el => {
+    const k = el.getAttribute("data-dl");
+    if (k === "clear") {
+      el.addEventListener("click", () => { state.delaysFilters = { phase:"all", owner:"all", reason:"all", search:"", sort:"days" }; renderDelays(); });
+    } else if (k === "search") {
+      let tmr; el.addEventListener("input", e => { clearTimeout(tmr); const v = e.target.value; tmr = setTimeout(() => { state.delaysFilters.search = v; renderDelays(); }, 180); });
+    } else {
+      el.addEventListener("change", e => { state.delaysFilters[k] = e.target.value; renderDelays(); });
+    }
+  });
+
+  state.tabRendered.add("delays");
+}
+
+/* ============================================================
+   CRITICAL TASKS TAB — courses at risk of missing Delivery
+   ============================================================ */
+function analyzeCritical(rows, courses){
+  const today = todayMidnight();
+  const out = [];
+  courses.forEach(c => {
+    const deliveryRow = c.tasks.find(t => t.task === "Delivery");
+    if (!deliveryRow) return;
+    if (statusOf(deliveryRow) === "completed") return;
+
+    const deliveryDate = parseSheetDate(deliveryRow.planned_end_date);
+    const open      = c.tasks.filter(t => statusOf(t) !== "completed").length;
+    const completed = c.tasks.length - open;
+    const overdue = c.tasks.filter(t => {
+      if (statusOf(t) === "completed") return false;
+      const pe = parseSheetDate(t.planned_end_date);
+      return pe && pe < today;
+    }).length;
+    const pct = c.tasks.length ? Math.round(100 * completed / c.tasks.length) : 0;
+    const daysLeft = deliveryDate ? Math.round((deliveryDate - today) / 86400000) : null;
+
+    // Current furthest phase reached
+    let currentPhase = "—";
+    for (const p of LIFECYCLE_PHASES) {
+      const inPhase = c.tasks.filter(t => t.lifecycle_phase === p);
+      if (inPhase.some(t => statusOf(t) !== "not started")) currentPhase = p;
+    }
+
+    const proximityPenalty = (daysLeft !== null && daysLeft <= 60) ? Math.max(0, (60 - daysLeft) / 2) : 0;
+    const score = Math.round(overdue * 15 + open * 0.5 + proximityPenalty);
+
+    // Risk threshold: in-scope if any of: overdue tasks, <30 days to delivery (incl past)
+    const inScope = overdue > 0 || (daysLeft !== null && daysLeft < 30);
+    if (inScope) out.push({ course: c, deliveryDate: deliveryRow.planned_end_date, daysLeft, open, overdue, completed, pct, currentPhase, score });
+  });
+  out.sort((a,b) => b.score - a.score);
+  return { atRisk: out, total: out.length };
+}
+
+function renderCritical(){
+  const slot = $("#critical-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) { slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return; }
+  if (!state.rows.length) { slot.innerHTML = '<div class="narrative-loading">Loading critical tasks…</div>'; return; }
+
+  const a = analyzeCritical(state.rows, state.courses);
+  const f = state.criticalFilters;
+
+  let filtered = a.atRisk.slice();
+  if (f.cohort !== "all") filtered = filtered.filter(r => r.course.phase === f.cohort);
+  if (f.sort === "score")    filtered.sort((a,b) => b.score - a.score);
+  else if (f.sort === "days") filtered.sort((a,b) => (a.daysLeft === null ? 1 : (b.daysLeft === null ? -1 : a.daysLeft - b.daysLeft)));
+  else if (f.sort === "open") filtered.sort((a,b) => b.open - a.open);
+  else if (f.sort === "overdue") filtered.sort((a,b) => b.overdue - a.overdue);
+
+  const cohorts = Array.from(new Set(state.courses.map(c => c.phase).filter(Boolean))).sort();
+  const cohortOpts = ['<option value="all"' + (f.cohort==="all"?' selected':'') + '>All cohorts</option>']
+    .concat(cohorts.map(c => '<option value="' + escapeHtml(c) + '"' + (f.cohort===c?' selected':'') + '>' + escapeHtml(c) + '</option>')).join("");
+  const sortOpts = [
+    ["score","Risk score"],["days","Days to delivery"],["open","Most open work"],["overdue","Most overdue"],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.sort===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+
+  // Stat band
+  const pastDue = filtered.filter(r => r.daysLeft !== null && r.daysLeft < 0).length;
+  const within30 = filtered.filter(r => r.daysLeft !== null && r.daysLeft >= 0 && r.daysLeft < 30).length;
+  const noDate = filtered.filter(r => r.daysLeft === null).length;
+  const statBand =
+    '<div class="ct-statband">' +
+      '<div class="mx-stat ' + (a.total === 0 ? 'done' : '') + '"><div class="lbl">Total at-risk</div><div class="val">' + a.total + '</div><div class="sub">undelivered courses</div></div>' +
+      '<div class="mx-stat ' + (pastDue ? '' : 'done') + '"><div class="lbl">Past delivery</div><div class="val" style="' + (pastDue ? 'color:var(--rag-red)' : '') + '">' + pastDue + '</div><div class="sub">Delivery date already passed</div></div>' +
+      '<div class="mx-stat"><div class="lbl">Within 30 days</div><div class="val">' + within30 + '</div><div class="sub">delivery approaching</div></div>' +
+      '<div class="mx-stat"><div class="lbl">No delivery date</div><div class="val">' + noDate + '</div><div class="sub">Delivery row missing planned end</div></div>' +
+    '</div>';
+
+  // Table body
+  const tbody = filtered.length === 0
+    ? '<tr><td colspan="9" style="padding:36px 12px;text-align:center;color:var(--rag-green);font-weight:600">No courses are currently at risk. ✓</td></tr>'
+    : filtered.map((r, idx) => {
+        const dlCls = (r.daysLeft !== null && r.daysLeft < 0) ? "high" : ((r.daysLeft !== null && r.daysLeft < 14) ? "med" : "");
+        const dlText = r.daysLeft === null ? "—" : (r.daysLeft < 0 ? Math.abs(r.daysLeft) + "d past" : r.daysLeft + "d left");
+        const scoreCls = r.score >= 50 ? "" : (r.score >= 20 ? "med" : "lo");
+        return '<tr>' +
+          '<td class="rank-cell">' + (idx + 1) + '</td>' +
+          '<td class="course-cell" title="' + escapeHtml(r.course.title) + '">' + escapeHtml(r.course.title) +
+            '<small>' + escapeHtml(r.course.phase || "") + (r.course.sme ? " · SME " + escapeHtml(r.course.sme) : "") + '</small></td>' +
+          '<td class="phase-cell" style="font-family:var(--mono);font-size:10px">' + escapeHtml(r.currentPhase) + '</td>' +
+          '<td class="date-cell" style="font-family:var(--mono);font-size:11px">' + escapeHtml(r.deliveryDate || "—") + '</td>' +
+          '<td class="days-cell ' + dlCls + '">' + escapeHtml(dlText) + '</td>' +
+          '<td><div class="pct-bar"><div class="bar"><span style="width:' + r.pct + '%"></span></div><span class="lbl">' + r.pct + '%</span></div></td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums"><b>' + r.open + '</b></td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums' + (r.overdue ? ';color:var(--rag-red);font-weight:800' : '') + '">' + r.overdue + '</td>' +
+          '<td><span class="score-pill ' + scoreCls + '">' + r.score + '</span></td>' +
+        '</tr>';
+      }).join("");
+
+  slot.innerHTML =
+    statBand +
+    '<div class="mx-toolbar">' +
+      '<div class="field"><label>Cohort</label><select data-ct="cohort">' + cohortOpts + '</select></div>' +
+      '<div class="field"><label>Sort</label><select data-ct="sort">' + sortOpts + '</select></div>' +
+      '<div class="result-count"><b>' + filtered.length + '</b> of ' + a.total + ' courses</div>' +
+    '</div>' +
+    '<div class="ct-table-wrap"><table class="ct-table">' +
+      '<thead><tr>' +
+        '<th>#</th><th>Course</th><th>Current phase</th><th>Delivery date</th><th>Time</th>' +
+        '<th>Complete %</th><th class="right">Open</th><th class="right">Overdue</th><th>Risk</th>' +
+      '</tr></thead>' +
+      '<tbody>' + tbody + '</tbody>' +
+    '</table></div>';
+
+  $$('[data-ct]').forEach(el => {
+    const k = el.getAttribute("data-ct");
+    el.addEventListener("change", e => { state.criticalFilters[k] = e.target.value; renderCritical(); });
+  });
+
+  state.tabRendered.add("critical");
+}
+
+/* ============================================================
+   DISCREPANCIES TAB — sheet hygiene
+   ============================================================ */
+const DISCREPANCY_TYPES = [
+  { type:"phase_order",            severity:"high",   title:"Phase order violation",       desc:"Later phase has Completed work while an earlier phase is still open." },
+  { type:"completed_no_end",       severity:"high",   title:"Completed without end date",  desc:"Status is Completed but Actual End Date is blank." },
+  { type:"wip_no_start",           severity:"medium", title:"In progress without start",   desc:"Status is In progress but Actual Start Date is blank." },
+  { type:"start_after_end",        severity:"high",   title:"Actual start > end",          desc:"Actual Start Date is after Actual End Date." },
+  { type:"pstart_after_pend",      severity:"medium", title:"Planned start > end",         desc:"Planned Start Date is after Planned End Date." },
+  { type:"ns_has_actuals",         severity:"medium", title:"Not Started but has actuals", desc:"Status is Not Started yet Actual Start or End Date is filled." },
+  { type:"completed_future_end",   severity:"low",    title:"Completed with future end",   desc:"Completed task has Actual End Date in the future." },
+];
+
+function analyzeDiscrepancies(rows, courses){
+  const today = todayMidnight();
+  const issues = [];
+
+  rows.forEach(r => {
+    const status = statusOf(r);
+    const ae = parseSheetDate(r.actual_end_date);
+    const as_= parseSheetDate(r.actual_start_date);
+    const pe = parseSheetDate(r.planned_end_date);
+    const ps = parseSheetDate(r.planned_start_date);
+
+    if (status === "completed" && !r.actual_end_date)
+      issues.push({ type:"completed_no_end", severity:"high", row:r, msg:'<b>Completed</b> with no Actual End Date.' });
+    if (status === "in progress" && !r.actual_start_date)
+      issues.push({ type:"wip_no_start", severity:"medium", row:r, msg:'<b>In progress</b> with no Actual Start Date.' });
+    if (as_ && ae && as_ > ae)
+      issues.push({ type:"start_after_end", severity:"high", row:r, msg:'Actual Start (' + r.actual_start_date + ') is after Actual End (' + r.actual_end_date + ').' });
+    if (ps && pe && ps > pe)
+      issues.push({ type:"pstart_after_pend", severity:"medium", row:r, msg:'Planned Start (' + r.planned_start_date + ') is after Planned End (' + r.planned_end_date + ').' });
+    if (status === "not started" && (r.actual_start_date || r.actual_end_date))
+      issues.push({ type:"ns_has_actuals", severity:"medium", row:r, msg:'<b>Not Started</b> but actual dates filled.' });
+    if (status === "completed" && ae && ae > today)
+      issues.push({ type:"completed_future_end", severity:"low", row:r, msg:'Completed task has Actual End Date in the future (' + r.actual_end_date + ').' });
+  });
+
+  // Phase-order violations
+  const order = { KICKOFF:1, DISCOVERY:2, DESIGN:3, DEVELOPMENT:4, DELIVERY:5 };
+  courses.forEach(c => {
+    const maxCompletedPhase = c.tasks
+      .filter(t => statusOf(t) === "completed")
+      .map(t => order[t.lifecycle_phase] || 0)
+      .reduce((a,b) => Math.max(a,b), 0);
+    c.tasks.forEach(t => {
+      const ord = order[t.lifecycle_phase] || 0;
+      const s = statusOf(t);
+      if (ord < maxCompletedPhase && (s === "not started" || s === "in progress")) {
+        issues.push({
+          type:"phase_order", severity:"high", row:t,
+          msg:'<b>' + escapeHtml(t.lifecycle_phase) + '</b> task is <b>' + escapeHtml(t.status) + '</b> while a later phase has Completed work.',
+        });
+      }
+    });
+  });
+
+  const byType = {};
+  DISCREPANCY_TYPES.forEach(d => byType[d.type] = []);
+  issues.forEach(i => { if (byType[i.type]) byType[i.type].push(i); });
+
+  return { issues, byType, total: issues.length };
+}
+
+function renderDiscrepancies(){
+  const slot = $("#discrepancies-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) { slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return; }
+  if (!state.rows.length) { slot.innerHTML = '<div class="narrative-loading">Scanning the sheet…</div>'; return; }
+
+  const a = analyzeDiscrepancies(state.rows, state.courses);
+  const sel = state.discrepanciesFilter;
+
+  // Type cards
+  const cards = DISCREPANCY_TYPES.map(t => {
+    const count = a.byType[t.type] ? a.byType[t.type].length : 0;
+    const selected = (sel === t.type) ? 'true' : 'false';
+    return '<button class="di-type-card" type="button" aria-selected="' + selected + '" data-di-type="' + t.type + '">' +
+      '<div class="top"><div class="ct ' + (count === 0 ? 'zero' : '') + '">' + count + '</div><div class="sev ' + t.severity + '">' + t.severity + '</div></div>' +
+      '<div class="title">' + escapeHtml(t.title) + '</div>' +
+      '<div class="desc">' + escapeHtml(t.desc) + '</div>' +
+    '</button>';
+  }).join("");
+  const allCard = '<button class="di-type-card" type="button" aria-selected="' + (sel === "all" ? "true" : "false") + '" data-di-type="all">' +
+    '<div class="top"><div class="ct ' + (a.total === 0 ? "zero" : "") + '">' + a.total + '</div><div class="sev high">Total</div></div>' +
+    '<div class="title">All issues</div>' +
+    '<div class="desc">Combined view of every hygiene issue across all patterns.</div>' +
+  '</button>';
+
+  let issueList;
+  if (a.total === 0) {
+    issueList = '<div class="di-allgood">✓ Sheet looks clean — no hygiene issues detected.</div>';
+  } else {
+    const issues = (sel === "all") ? a.issues
+                  : (a.byType[sel] || []);
+    if (issues.length === 0) {
+      issueList = '<div class="di-allgood">No issues of this type. ✓</div>';
+    } else {
+      issueList =
+        '<div class="di-issues-wrap"><table class="di-table">' +
+          '<thead><tr><th>Severity</th><th>Type</th><th>Course</th><th>Task</th><th>Status</th><th>Issue</th></tr></thead>' +
+          '<tbody>' + issues.map(i => {
+            const t = DISCREPANCY_TYPES.find(d => d.type === i.type) || { title: i.type, severity: i.severity };
+            return '<tr>' +
+              '<td><span class="sev ' + i.severity + '" style="display:inline-block;font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:' + (i.severity==="high"?"var(--rag-red-soft);color:#7A1F1F":i.severity==="medium"?"var(--rag-amber-soft);color:#6E5300":"var(--bg-alt);color:var(--ink-3)") + '">' + i.severity + '</span></td>' +
+              '<td style="font-size:11px;color:var(--ink-3)">' + escapeHtml(t.title) + '</td>' +
+              '<td style="font-weight:600">' + escapeHtml(i.row.course_title || "") + '</td>' +
+              '<td style="font-size:11px"><b>' + escapeHtml(i.row.task || "") + '</b> <span style="color:var(--ink-4);font-family:var(--mono)">(' + escapeHtml(i.row.lifecycle_phase || "") + ')</span></td>' +
+              '<td style="font-family:var(--mono);font-size:10px;color:var(--ink-3)">' + escapeHtml(i.row.status || "") + '</td>' +
+              '<td class="di-msg">' + i.msg + '</td>' +
+            '</tr>';
+          }).join("") + '</tbody>' +
+        '</table></div>';
+    }
+  }
+
+  slot.innerHTML =
+    '<div class="di-typegrid">' + allCard + cards + '</div>' +
+    issueList;
+
+  $$('[data-di-type]').forEach(btn => {
+    btn.addEventListener("click", () => { state.discrepanciesFilter = btn.getAttribute("data-di-type"); renderDiscrepancies(); });
+  });
+
+  state.tabRendered.add("discrepancies");
+}
+
+/* ============================================================
+   CLIENT UPLOAD DATES TAB
+   ============================================================ */
+function analyzeClientUploads(rows){
+  const today = todayMidnight();
+  const uploads = rows.filter(r => r.task === "2U Course Upload");
+  const buckets = { completed:0, pastDue:0, scheduled:0, noDate:0 };
+  const byWeek = new Map();
+
+  uploads.forEach(u => {
+    const status = statusOf(u);
+    const pe = parseSheetDate(u.planned_end_date);
+    if (status === "completed") buckets.completed++;
+    if (!pe) {
+      if (status !== "completed") buckets.noDate++;
+      return;
+    }
+    const isPastDue = status !== "completed" && pe < today;
+    if (isPastDue) buckets.pastDue++;
+    else if (status !== "completed") buckets.scheduled++;
+
+    // Monday of that week
+    const monday = new Date(pe);
+    const dow = monday.getDay();
+    const shift = dow === 0 ? -6 : (1 - dow);
+    monday.setDate(monday.getDate() + shift);
+    monday.setHours(0,0,0,0);
+    const wk = fmtSheetDate(monday);
+
+    if (!byWeek.has(wk)) byWeek.set(wk, []);
+    byWeek.get(wk).push({
+      course: u.course_title, cohort: u.phase,
+      plannedStart: u.planned_start_date, plannedEnd: u.planned_end_date,
+      actualStart: u.actual_start_date, actualEnd: u.actual_end_date,
+      status: u.status, isPastDue,
+    });
+  });
+  return { uploads, byWeek, buckets };
+}
+
+function thisWeekMonday(){
+  const t = todayMidnight();
+  const dow = t.getDay();
+  const shift = dow === 0 ? -6 : (1 - dow);
+  t.setDate(t.getDate() + shift);
+  return t;
+}
+
+function renderClient(){
+  const slot = $("#client-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) { slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return; }
+  if (!state.rows.length) { slot.innerHTML = '<div class="narrative-loading">Loading client upload schedule…</div>'; return; }
+
+  const c = analyzeClientUploads(state.rows);
+  const f = state.clientFilters;
+  const todayMonKey = fmtSheetDate(thisWeekMonday());
+
+  // Stat band
+  const stat =
+    '<div class="cl-statband">' +
+      '<div class="mx-stat done"><div class="lbl">Completed uploads</div><div class="val">' + c.buckets.completed + '</div><div class="sub">already handed off</div></div>' +
+      '<div class="mx-stat ' + (c.buckets.pastDue ? '' : 'done') + '"><div class="lbl">Past due</div><div class="val" style="' + (c.buckets.pastDue ? 'color:var(--rag-red)' : '') + '">' + c.buckets.pastDue + '</div><div class="sub">planned date passed, not done</div></div>' +
+      '<div class="mx-stat wip"><div class="lbl">Scheduled</div><div class="val">' + c.buckets.scheduled + '</div><div class="sub">future planned dates</div></div>' +
+      '<div class="mx-stat"><div class="lbl">No date set</div><div class="val">' + c.buckets.noDate + '</div><div class="sub">undated uploads</div></div>' +
+    '</div>';
+
+  // Filter UI
+  const cohorts = Array.from(new Set(c.uploads.map(u => u.phase).filter(Boolean))).sort();
+  const cohortOpts = ['<option value="all"' + (f.cohort==="all"?' selected':'') + '>All cohorts</option>']
+    .concat(cohorts.map(co => '<option value="' + escapeHtml(co) + '"' + (f.cohort===co?' selected':'') + '>' + escapeHtml(co) + '</option>')).join("");
+  const statusOpts = [
+    ["all","All statuses"],["Not Started","Not Started"],["In progress","In progress"],["Completed","Completed"],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.status===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+
+  // Filter weeks
+  function passFilter(it){
+    if (f.cohort !== "all" && it.cohort !== f.cohort) return false;
+    if (f.status !== "all" && it.status !== f.status) return false;
+    return true;
+  }
+
+  // Sorted week keys, oldest to newest
+  const weekKeys = Array.from(c.byWeek.keys()).sort();
+  const weekBlocks = weekKeys.map(wk => {
+    const all = c.byWeek.get(wk);
+    const items = all.filter(passFilter);
+    if (items.length === 0) return null;
+    const monday = parseSheetDate(wk);
+    const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+    const rangeLabel = monday.toLocaleDateString(undefined, {month:"short", day:"numeric"}) +
+                       ' – ' + sunday.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
+    const isThisWeek = wk === todayMonKey;
+    const isPastWeek = sunday < todayMidnight();
+    const headCls = isPastWeek ? "past" : (isThisWeek ? "this" : "");
+    const countLabel = items.length + (items.length === 1 ? " upload" : " uploads");
+    return (
+      '<div class="cl-week">' +
+        '<div class="cl-week-head">' +
+          '<span class="wk">' + escapeHtml(wk) + '</span>' +
+          '<span class="rng">' + escapeHtml(rangeLabel) + (isThisWeek ? ' · This week' : '') + '</span>' +
+          '<span class="ct ' + headCls + '">' + countLabel + '</span>' +
+        '</div>' +
+        '<table class="cl-table"><thead><tr>' +
+          '<th>Course</th><th>Cohort</th><th>Planned Start</th><th>Planned End</th><th>Actual Start</th><th>Actual End</th><th>Status</th>' +
+        '</tr></thead><tbody>' +
+        items.map(it => {
+          const status = statusOf(it);
+          const badgeCls = status === "completed" ? "completed" : (status === "in progress" ? "in-progress" : "not-started");
+          const overrideCls = it.isPastDue ? "past-due" : badgeCls;
+          const trCls = it.isPastDue ? ' class="past"' : '';
+          const badgeLabel = it.isPastDue ? "Past due" : it.status;
+          return '<tr' + trCls + '>' +
+            '<td class="course-cell" title="' + escapeHtml(it.course) + '">' + escapeHtml(it.course) + '</td>' +
+            '<td class="cohort-cell">' + escapeHtml(it.cohort || "—") + '</td>' +
+            '<td class="date-cell">' + escapeHtml(it.plannedStart || "—") + '</td>' +
+            '<td class="date-cell">' + escapeHtml(it.plannedEnd || "—") + '</td>' +
+            '<td class="date-cell">' + escapeHtml(it.actualStart || "—") + '</td>' +
+            '<td class="date-cell">' + escapeHtml(it.actualEnd || "—") + '</td>' +
+            '<td><span class="cl-status-badge ' + overrideCls + '">' + escapeHtml(badgeLabel) + '</span></td>' +
+          '</tr>';
+        }).join("") +
+        '</tbody></table>' +
+      '</div>'
+    );
+  }).filter(Boolean).join("");
+
+  // Undated uploads
+  const undated = c.uploads.filter(u => !u.planned_end_date && passFilter({cohort: u.phase, status: u.status}));
+  const undatedBlock = undated.length === 0 ? "" : (
+    '<div class="cl-week">' +
+      '<div class="cl-week-head">' +
+        '<span class="wk">—</span>' +
+        '<span class="rng">No planned end date set</span>' +
+        '<span class="ct">' + undated.length + ' upload' + (undated.length === 1 ? '' : 's') + '</span>' +
+      '</div>' +
+      '<table class="cl-table"><thead><tr>' +
+        '<th>Course</th><th>Cohort</th><th>Status</th>' +
+      '</tr></thead><tbody>' +
+      undated.map(u => {
+        const status = statusOf(u);
+        const badgeCls = status === "completed" ? "completed" : (status === "in progress" ? "in-progress" : "not-started");
+        return '<tr>' +
+          '<td class="course-cell">' + escapeHtml(u.course_title || "") + '</td>' +
+          '<td class="cohort-cell">' + escapeHtml(u.phase || "—") + '</td>' +
+          '<td><span class="cl-status-badge ' + badgeCls + '">' + escapeHtml(u.status || "") + '</span></td>' +
+        '</tr>';
+      }).join("") +
+      '</tbody></table>' +
+    '</div>'
+  );
+
+  const body = weekBlocks + undatedBlock;
+  const empty = !body
+    ? '<div class="wl-empty">No 2U Course Upload rows match the current filters.</div>'
+    : '';
+
+  slot.innerHTML =
+    stat +
+    '<div class="mx-toolbar">' +
+      '<div class="field"><label>Cohort</label><select data-cl="cohort">' + cohortOpts + '</select></div>' +
+      '<div class="field"><label>Status</label><select data-cl="status">' + statusOpts + '</select></div>' +
+      '<div class="result-count"><b>' + c.uploads.length + '</b> upload rows total</div>' +
+    '</div>' +
+    (body || empty);
+
+  $$('[data-cl]').forEach(el => {
+    const k = el.getAttribute("data-cl");
+    el.addEventListener("change", e => { state.clientFilters[k] = e.target.value; renderClient(); });
+  });
+
+  state.tabRendered.add("client");
+}
+
+/* ============================================================
+   LAZY TAB DISPATCH — render only the active tab on data refresh.
+   Other tabs render on first activation. Filter handlers call
+   their tab's renderer directly (which also updates the cache).
+   ============================================================ */
+const TAB_RENDERERS = {
+  narrative:     function(){ renderNarrative(); },
+  delivery:      function(){ renderDelivery(); },
+  matrix:        function(){ renderMatrix(); },
+  datewise:      function(){ renderDatewise(); },
+  workload:      function(){ renderWorkload(); },
+  delays:        function(){ renderDelays(); },
+  critical:      function(){ renderCritical(); },
+  discrepancies: function(){ renderDiscrepancies(); },
+  client:        function(){ renderClient(); },
+};
+
+function getCurrentActiveTab(){
+  const btn = document.querySelector('.tab-btn[aria-selected="true"]');
+  return btn && btn.dataset ? btn.dataset.tab : "narrative";
+}
+
+function renderForTab(name){
+  if (state.tabRendered.has(name)) return;
+  const fn = TAB_RENDERERS[name];
+  if (fn) fn();
+}
+
+function renderAll(){
+  renderBanner();
+  renderTopStrip();
+  renderTabCounts();
+  state.tabRendered = new Set();          // mark all stale on data refresh
+  renderForTab(getCurrentActiveTab());    // render only the visible tab
+}
+
+/* ============================================================
+   NARRATIVE TAB — analyzer + render + copy-as-email
+   ============================================================ */
+const LIFECYCLE_PHASES = ["KICKOFF","DISCOVERY","DESIGN","DEVELOPMENT","DELIVERY"];
+
+function statusOf(r){ return String(r.status||"").trim().toLowerCase(); }
+
+function parseSheetDate(s){
+  if (!s) return null;
+  // Apps Script returns YYYY-MM-DD strings
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s).trim());
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  return isNaN(d) ? null : d;
+}
+
+function todayMidnight(){
+  const t = new Date(); t.setHours(0,0,0,0); return t;
+}
+
+function ragForPhase(p){
+  if (p.total === 0) return "gray";
+  if (p.completed === p.total) return "green";
+  // Not yet underway
+  if (p.completed === 0 && p.in_progress === 0) return "gray";
+  if (p.overdue === 0) return "green";
+  const rate = p.overdue / p.total;
+  if (rate > 0.05) return "red";
+  return "amber";
+}
+
+function analyzeProject(rows, courses){
+  const today = todayMidnight();
+
+  const phases = LIFECYCLE_PHASES.map(name => {
+    const taskRows = rows.filter(r => r.lifecycle_phase === name);
+    const completed   = taskRows.filter(r => statusOf(r) === "completed").length;
+    const in_progress = taskRows.filter(r => statusOf(r) === "in progress").length;
+    const not_started = taskRows.filter(r => statusOf(r) === "not started").length;
+    const withPlanned = taskRows.filter(r => r.planned_end_date).length;
+    const overdue = taskRows.filter(r => {
+      if (statusOf(r) === "completed") return false;
+      const pe = parseSheetDate(r.planned_end_date);
+      return pe && pe < today;
+    }).length;
+    const total = taskRows.length;
+    const obj = { name, total, completed, in_progress, not_started, withPlanned, overdue };
+    obj.rag = ragForPhase(obj);
+    obj.pct = total ? Math.round(100 * completed / total) : 0;
+    return obj;
+  });
+
+  // Delivery commitments — one Delivery row per course
+  const deliveryRows = rows.filter(r => r.lifecycle_phase === "DELIVERY" && r.task === "Delivery");
+  const buckets = { delivered:0, pastDue:0, next14:0, next30:0, next60:0, beyond:0, noDate:0 };
+  const pastDueCourses = [];
+  deliveryRows.forEach(r => {
+    if (statusOf(r) === "completed") { buckets.delivered++; return; }
+    const pe = parseSheetDate(r.planned_end_date);
+    if (!pe) { buckets.noDate++; return; }
+    const days = Math.round((pe - today) / 86400000);
+    if (days < 0) { buckets.pastDue++; pastDueCourses.push(r.course_title); }
+    else if (days <= 14) buckets.next14++;
+    else if (days <= 30) buckets.next30++;
+    else if (days <= 60) buckets.next60++;
+    else buckets.beyond++;
+  });
+
+  const totalOverdue = phases.reduce((s,p) => s + p.overdue, 0);
+  let verdict, verdictTone;
+  if (buckets.pastDue > 0 || phases.some(p => p.rag === "red")) {
+    verdict = "Off schedule"; verdictTone = "red";
+  } else if (phases.some(p => p.rag === "amber") || totalOverdue > 0) {
+    verdict = "Tracking with risk"; verdictTone = "amber";
+  } else if (phases.every(p => p.rag === "gray")) {
+    verdict = "Not yet underway"; verdictTone = "gray";
+  } else {
+    verdict = "On track"; verdictTone = "green";
+  }
+
+  // Overall summary sentence
+  const totalCourses = courses.length;
+  const delivered   = buckets.delivered;
+  const pctDelivered = totalCourses ? Math.round(100 * delivered / totalCourses) : 0;
+  const summaryParts = [];
+  summaryParts.push(delivered + " of " + totalCourses + " courses delivered (" + pctDelivered + "%).");
+  if (buckets.pastDue > 0) {
+    summaryParts.push(buckets.pastDue + " delivery date" + (buckets.pastDue === 1 ? " is" : "s are") + " already past.");
+  }
+  if (totalOverdue > 0) {
+    const worst = phases.slice().sort((a,b) => b.overdue - a.overdue)[0];
+    summaryParts.push(totalOverdue + " task" + (totalOverdue === 1 ? "" : "s") + " currently overdue" + (worst && worst.overdue ? ", mostly in " + worst.name : "") + ".");
+  } else if (verdictTone === "green") {
+    summaryParts.push("No overdue work across any phase.");
+  }
+
+  return {
+    overall: {
+      verdict, verdictTone,
+      asOf: today,
+      totalCourses, delivered, pctDelivered,
+      totalOverdue,
+      pastDueCount: buckets.pastDue,
+      summary: summaryParts.join(" "),
+    },
+    phases,
+    deliveryBuckets: buckets,
+    pastDueCourses,
+  };
+}
+
+function phaseProse(p){
+  if (p.total === 0) return "No tasks defined for this phase.";
+  if (p.completed === p.total) return "<b>All " + p.total + " tasks complete.</b>";
+  if (p.completed === 0 && p.in_progress === 0) {
+    const planned = p.withPlanned > 0 ? p.withPlanned + " of " + p.total + " have planned dates." : "No planned dates set yet.";
+    return "Not yet underway. " + planned;
+  }
+  const bits = [];
+  bits.push("<b>" + p.completed + "</b> done");
+  if (p.in_progress) bits.push("<b>" + p.in_progress + "</b> in progress");
+  if (p.not_started) bits.push("<b>" + p.not_started + "</b> not started");
+  if (p.overdue)     bits.push('<b style="color:var(--rag-red)">' + p.overdue + " overdue</b>");
+  return bits.join(" · ") + ".";
+}
+
+function renderNarrative(){
+  const slot = $("#narrative-content");
+  if (!slot) return;
+
+  if (state.fetchError && !state.raw) {
+    slot.innerHTML = '<div class="narrative-empty">No project data available — see the banner above for details.</div>';
+    return;
+  }
+  if (!state.rows.length) {
+    slot.innerHTML = '<div class="narrative-loading">Loading project status…</div>';
+    return;
+  }
+
+  const a = analyzeProject(state.rows, state.courses);
+  const tone = a.overall.verdictTone;
+  const verdictAccent = '<span class="accent ' + tone + '">' + escapeHtml(a.overall.verdict) + '</span>';
+  const asOfLabel = a.overall.asOf.toLocaleDateString(undefined, { weekday:"short", year:"numeric", month:"short", day:"numeric" });
+
+  // Verdict card
+  const verdictCard =
+    '<div class="verdict-card ' + tone + '">' +
+      '<div>' +
+        '<div class="v-eyebrow"><span class="ddot"></span> Project Verdict</div>' +
+        '<h2 class="v-title">Microsoft OCs is ' + verdictAccent + '.</h2>' +
+        '<p class="v-sub">' + escapeHtml(a.overall.summary) + '</p>' +
+      '</div>' +
+      '<div class="v-actions">' +
+        '<button class="btn-primary" id="copyEmailBtn" type="button" aria-label="Copy as email">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+          '<span>Copy as email</span>' +
+        '</button>' +
+        '<div class="v-asof">As of ' + escapeHtml(asOfLabel) + '</div>' +
+      '</div>' +
+    '</div>';
+
+  // Phase list
+  const phaseRows = a.phases.map((p, i) => {
+    const completedW   = p.total ? (100 * p.completed   / p.total) : 0;
+    const inProgressW  = p.total ? (100 * p.in_progress / p.total) : 0;
+    const ragLabel = { green:"GREEN", amber:"AMBER", red:"RED", gray:"NOT STARTED" }[p.rag];
+    const stats =
+      '<div class="ph-stats">' +
+        '<div class="pct">' + (p.total ? p.pct + "%" : "—") + '</div>' +
+        '<div class="pct-label">complete</div>' +
+      '</div>';
+    return (
+      '<div class="phase-row ' + p.rag + '">' +
+        '<div class="ph-num">' + String(i+1).padStart(2,"0") + '</div>' +
+        '<div class="ph-body">' +
+          '<div class="ph-name">' + escapeHtml(p.name) +
+            ' <span class="rag-badge ' + p.rag + '">' + ragLabel + '</span>' +
+            ' <span style="font-size:12px;color:var(--ink-4);font-weight:600">' + p.total + ' tasks</span>' +
+          '</div>' +
+          '<div class="ph-prose">' + phaseProse(p) + '</div>' +
+          '<div class="ph-bar" title="' + p.completed + ' completed · ' + p.in_progress + ' in progress · ' + p.not_started + ' not started">' +
+            '<span class="seg completed" style="width:' + completedW + '%"></span>' +
+            '<span class="seg in-progress" style="width:' + inProgressW + '%"></span>' +
+          '</div>' +
+        '</div>' +
+        stats +
+      '</div>'
+    );
+  }).join("");
+
+  // Delivery commitments
+  const b = a.deliveryBuckets;
+  const commitments =
+    '<div class="commitments">' +
+      '<h3>Delivery commitments <span class="sub">— ' + a.overall.totalCourses + ' courses</span></h3>' +
+      '<div class="com-grid">' +
+        comTile("delivered","Delivered", b.delivered) +
+        comTile(b.pastDue ? "past" : "","Past delivery", b.pastDue) +
+        comTile(b.next14 ? "next14" : "","Next 14 days", b.next14) +
+        comTile("","Next 15–30 days", b.next30) +
+        comTile("","Next 31–60 days", b.next60) +
+        comTile("","Beyond 60 days", b.beyond) +
+        comTile("","No date set", b.noDate) +
+      '</div>' +
+    '</div>';
+
+  slot.innerHTML =
+    verdictCard +
+    '<div class="section-title"><h2>Phase status</h2><div class="rule"></div></div>' +
+    '<div class="phase-list">' + phaseRows + '</div>' +
+    '<div class="section-title"><h2>Commitments</h2><div class="rule"></div></div>' +
+    commitments;
+
+  // Wire copy button (after innerHTML)
+  const btn = $("#copyEmailBtn");
+  if (btn) btn.addEventListener("click", () => copyAsEmail(a, btn));
+
+  state.tabRendered.add("narrative");
+}
+
+function comTile(extraClass, label, value){
+  return '<div class="com-tile' + (extraClass ? " " + extraClass : "") + '">' +
+           '<div class="com-label">' + escapeHtml(label) + '</div>' +
+           '<div class="com-value">' + value + '</div>' +
+         '</div>';
+}
+
+function buildEmailText(a){
+  const asOf = a.overall.asOf.toLocaleDateString(undefined, { weekday:"short", year:"numeric", month:"short", day:"numeric" });
+  const tag = { green:"[Green]", amber:"[Amber]", red:"[Red]  ", gray:"[-]    " };
+  const lines = [];
+  lines.push("Microsoft OCs — Project Status");
+  lines.push("As of " + asOf);
+  lines.push("");
+  lines.push("VERDICT: " + a.overall.verdict.toUpperCase());
+  lines.push(a.overall.summary);
+  lines.push("");
+  lines.push("PHASE STATUS");
+  const padPhase = s => (s + "           ").slice(0, 12);
+  a.phases.forEach(p => {
+    const prose = (p.completed === 0 && p.in_progress === 0)
+      ? "not yet underway"
+      : (p.pct + "% complete · " + p.overdue + " overdue");
+    const tasksLabel = p.total === 1 ? "task " : "tasks";
+    lines.push(tag[p.rag] + "  " + padPhase(p.name) + "—  " + String(p.total).padStart(4) + " " + tasksLabel + " · " + prose);
+  });
+  const b = a.deliveryBuckets;
+  lines.push("");
+  lines.push("DELIVERY COMMITMENTS (" + a.overall.totalCourses + " courses)");
+  const pad = n => String(n).padStart(4);
+  lines.push("Delivered:        " + pad(b.delivered));
+  lines.push("Past delivery:    " + pad(b.pastDue));
+  lines.push("Next 14 days:     " + pad(b.next14));
+  lines.push("Next 15-30 days:  " + pad(b.next30));
+  lines.push("Next 31-60 days:  " + pad(b.next60));
+  lines.push("Beyond 60 days:   " + pad(b.beyond));
+  lines.push("No date set:      " + pad(b.noDate));
+  return lines.join("\n");
+}
+
+function copyAsEmail(a, btn){
+  const text = buildEmailText(a);
+  const done = () => {
+    const labelSpan = btn.querySelector("span");
+    const original = labelSpan ? labelSpan.textContent : "Copy as email";
+    btn.classList.add("copied");
+    if (labelSpan) labelSpan.textContent = "Copied!";
+    setTimeout(() => {
+      btn.classList.remove("copied");
+      if (labelSpan) labelSpan.textContent = original;
+    }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done){
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    done();
+  } catch(e){
+    window.prompt("Copy the text below:", text);
+  }
+}
+
+/* ============================================================
+   DELIVERY STATUS TAB — analyzer + render + charts
+   ============================================================ */
+const COHORT_ORDER = ["PHASE 2","PHASE 3"];
+const PHASE_PALETTE = {
+  KICKOFF:"#6F42C1", DISCOVERY:"#1376D4", DESIGN:"#1B4F8C",
+  DEVELOPMENT:"#8A4B12", DELIVERY:"#2BAA52",
+};
+const COLOR = {
+  completed:"#2BAA52", wip:"#1376D4", ns:"#8A8F97", late:"#C53D3D",
+  forecast:"#B8930E", forecastFill:"rgba(184,147,14,0.10)",
+  ideal:"#B7BCC4",
+  cohortP2:"#1376D4", cohortP3:"#FECF48",
+};
+
+/* For each course, list which lifecycle phases are fully signed off
+   (i.e. all of that phase's tasks are Completed). Returns
+   { phaseDone: {KICKOFF:bool, ...}, lastSignedOff: "DELIVERY" | null }
+*/
+function courseSignoff(course){
+  const done = {};
+  LIFECYCLE_PHASES.forEach(p => {
+    const inPhase = course.tasks.filter(t => t.lifecycle_phase === p);
+    done[p] = inPhase.length > 0 && inPhase.every(t => statusOf(t) === "completed");
+  });
+  // Sequential signoff: highest phase reached only if all prior also done
+  let seq = null;
+  for (const p of LIFECYCLE_PHASES) {
+    if (done[p]) seq = p; else break;
+  }
+  return { phaseDone: done, sequentialSignoff: seq };
+}
+
+function analyzeDelivery(rows, courses){
+  const today = todayMidnight();
+
+  // ----- Bottleneck: phase w/ most overdue, tiebreaker = most WIP -----
+  const phaseStats = LIFECYCLE_PHASES.map(name => {
+    const taskRows = rows.filter(r => r.lifecycle_phase === name);
+    const overdue = taskRows.filter(r => {
+      if (statusOf(r) === "completed") return false;
+      const pe = parseSheetDate(r.planned_end_date);
+      return pe && pe < today;
+    });
+    const wip = taskRows.filter(r => statusOf(r) === "in progress");
+    return {
+      name, total: taskRows.length, overdue: overdue.length, wip: wip.length,
+      overdueRows: overdue, wipRows: wip,
+    };
+  });
+  let bottleneck = phaseStats.slice().sort((a,b) => {
+    if (b.overdue !== a.overdue) return b.overdue - a.overdue;
+    return b.wip - a.wip;
+  })[0];
+  // What task within the bottleneck is most affected?
+  const driverPool = bottleneck.overdue > 0 ? bottleneck.overdueRows : bottleneck.wipRows;
+  const taskCounts = {};
+  driverPool.forEach(r => taskCounts[r.task] = (taskCounts[r.task] || 0) + 1);
+  const worstTaskEntry = Object.entries(taskCounts).sort((a,b) => b[1]-a[1])[0];
+  bottleneck.worstTask = worstTaskEntry ? worstTaskEntry[0] : null;
+  bottleneck.worstTaskCount = worstTaskEntry ? worstTaskEntry[1] : 0;
+  bottleneck.affectedCourses = new Set(driverPool.map(r => r.course_title)).size;
+
+  // ----- Two-lens overview -----
+  const totalTasks = rows.length;
+  const completedTasks = rows.filter(r => statusOf(r) === "completed").length;
+  const stepPct = totalTasks ? Math.round(100 * completedTasks / totalTasks) : 0;
+  const delivered = courses.filter(c =>
+    c.tasks.some(t => t.task === "Delivery" && statusOf(t) === "completed")
+  ).length;
+  const deliveredPct = courses.length ? Math.round(100 * delivered / courses.length) : 0;
+
+  // ----- Signoff scorecards by cohort -----
+  // For each cohort × each lifecycle phase: count of courses where phase signed off
+  const cohorts = COHORT_ORDER.filter(c => courses.some(co => co.phase === c));
+  const otherCohorts = Array.from(new Set(courses.map(c => c.phase).filter(p => p && cohorts.indexOf(p) === -1))).sort();
+  const allCohorts = cohorts.concat(otherCohorts);
+
+  const cohortTotals = {};
+  allCohorts.forEach(c => cohortTotals[c] = courses.filter(co => co.phase === c).length);
+
+  const signoffByCohort = {};
+  allCohorts.forEach(c => {
+    const subset = courses.filter(co => co.phase === c);
+    const perPhase = {};
+    LIFECYCLE_PHASES.forEach(p => perPhase[p] = 0);
+    let cumulative = 0;
+    subset.forEach(co => {
+      const so = courseSignoff(co);
+      LIFECYCLE_PHASES.forEach(p => { if (so.phaseDone[p]) perPhase[p]++; });
+      if (so.sequentialSignoff === "DELIVERY") cumulative++;
+    });
+    signoffByCohort[c] = { perPhase, cumulative, total: subset.length };
+  });
+  const signoffTotal = {
+    perPhase: {}, cumulative: 0, total: courses.length,
+  };
+  LIFECYCLE_PHASES.forEach(p => {
+    signoffTotal.perPhase[p] = allCohorts.reduce((s,c) => s + signoffByCohort[c].perPhase[p], 0);
+  });
+  signoffTotal.cumulative = allCohorts.reduce((s,c) => s + signoffByCohort[c].cumulative, 0);
+
+  // ----- Top 5 at-risk courses -----
+  const courseRisk = courses.map(co => {
+    const so = courseSignoff(co);
+    const deliveredCourse = so.phaseDone.DELIVERY;
+    const open = co.tasks.filter(t => statusOf(t) !== "completed").length;
+    const overdue = co.tasks.filter(t => {
+      if (statusOf(t) === "completed") return false;
+      const pe = parseSheetDate(t.planned_end_date);
+      return pe && pe < today;
+    }).length;
+    const deliveryRow = co.tasks.find(t => t.task === "Delivery");
+    const deliveryDate = deliveryRow ? parseSheetDate(deliveryRow.planned_end_date) : null;
+    const daysToDelivery = deliveryDate ? Math.round((deliveryDate - today) / 86400000) : null;
+    let proximityPenalty = 0;
+    if (daysToDelivery !== null && daysToDelivery <= 30) {
+      proximityPenalty = Math.max(0, 30 - daysToDelivery);
+    }
+    const score = overdue * 10 + open + proximityPenalty;
+    return {
+      course: co, deliveredCourse, open, overdue, daysToDelivery, deliveryDate,
+      score, sequentialSignoff: so.sequentialSignoff,
+    };
+  })
+  .filter(r => !r.deliveredCourse)            // only undelivered courses are at-risk
+  .filter(r => r.score > 0)
+  .sort((a,b) => b.score - a.score)
+  .slice(0, 5);
+
+  // ----- Slip distribution -----
+  const slipBins = [
+    { label:"On time / early", min:-Infinity, max:0,  count:0 },
+    { label:"1–3 d late",      min:1,         max:3,  count:0 },
+    { label:"4–7 d late",      min:4,         max:7,  count:0 },
+    { label:"8–14 d late",     min:8,         max:14, count:0 },
+    { label:"15–30 d late",    min:15,        max:30, count:0 },
+    { label:"30+ d late",      min:31,        max:Infinity, count:0 },
+  ];
+  let slipTotal = 0;
+  rows.forEach(r => {
+    if (statusOf(r) !== "completed") return;
+    const pe = parseSheetDate(r.planned_end_date);
+    const ae = parseSheetDate(r.actual_end_date);
+    if (!pe || !ae) return;
+    const days = Math.round((ae - pe) / 86400000);
+    const bin = slipBins.find(b => days >= b.min && days <= b.max);
+    if (bin) { bin.count++; slipTotal++; }
+  });
+
+  // ----- Burndown -----
+  // Count completed tasks per day from earliest actual_end_date.
+  const completions = rows
+    .filter(r => statusOf(r) === "completed" && r.actual_end_date)
+    .map(r => parseSheetDate(r.actual_end_date))
+    .filter(Boolean)
+    .sort((a,b) => a - b);
+  let burndown = null;
+  if (completions.length > 0) {
+    const start = completions[0];
+    const end = today;
+    const series = [];
+    let cumComp = 0;
+    let idx = 0;
+    for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)) {
+      while (idx < completions.length && completions[idx] <= d) { cumComp++; idx++; }
+      series.push({ date:new Date(d), remaining: totalTasks - cumComp });
+    }
+    // Forecast: simple linear from last 30 days velocity
+    const tail = series.slice(-30);
+    let forecast = null;
+    if (tail.length >= 2) {
+      const dx = (tail[tail.length-1].date - tail[0].date) / 86400000;
+      const dy = tail[0].remaining - tail[tail.length-1].remaining;
+      const velocity = dx > 0 ? dy / dx : 0;  // tasks completed per day
+      if (velocity > 0) {
+        const remaining = series[series.length-1].remaining;
+        const daysToZero = remaining / velocity;
+        if (isFinite(daysToZero) && daysToZero > 0 && daysToZero < 5 * 365) {
+          const finish = new Date(today.getTime() + daysToZero * 86400000);
+          forecast = { velocity, daysToZero, finish, remaining };
+        }
+      }
+    }
+    burndown = { series, forecast };
+  }
+
+  return {
+    bottleneck,
+    overview: { stepPct, deliveredPct, completedTasks, totalTasks, delivered, totalCourses: courses.length },
+    signoffByCohort, signoffTotal, cohorts: allCohorts, cohortTotals,
+    atRisk: courseRisk,
+    slip: { bins: slipBins, total: slipTotal },
+    burndown,
+    workflow: phaseStats.map(p => ({
+      name: p.name, total: p.total, wip: p.wip,
+      completed: rows.filter(r => r.lifecycle_phase === p.name && statusOf(r) === "completed").length,
+      not_started: rows.filter(r => r.lifecycle_phase === p.name && statusOf(r) === "not started").length,
+      overdue: p.overdue,
+    })),
+  };
+}
+
+/* Chart helpers ------------------------------------------- */
+function makeChart(id, config){
+  if (!window.Chart) return;
+  if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
+  const el = document.getElementById(id);
+  if (!el) return;
+  state.charts[id] = new Chart(el.getContext("2d"), config);
+}
+
+function lensChartConfig(pct, color){
+  return {
+    type:"doughnut",
+    data:{
+      datasets:[{
+        data:[pct, 100 - pct],
+        backgroundColor:[color, "#ECEEF1"],
+        borderWidth:0,
+      }],
+    },
+    options:{
+      cutout:"72%",
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+      animation:{ duration:400 },
+    },
+  };
+}
+
+function signoffChartConfig(d){
+  const labels = LIFECYCLE_PHASES;
+  const datasets = d.cohorts.map((c, i) => ({
+    label: c,
+    data: labels.map(p => d.signoffByCohort[c].perPhase[p]),
+    backgroundColor: i === 0 ? COLOR.cohortP2 : (i === 1 ? COLOR.cohortP3 : "#6F42C1"),
+    borderWidth: 0,
+    borderRadius: 4,
+  }));
+  // Cumulative line dataset
+  const cumulative = labels.map(p => d.signoffTotal.perPhase[p]);
+  datasets.push({
+    type:"line", label:"Total signed off",
+    data:cumulative,
+    borderColor:"#080808", backgroundColor:"#080808",
+    borderWidth:2, pointRadius:3, tension:0.25, yAxisID:"y",
+  });
+  return {
+    data:{ labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:"bottom", labels:{font:{size:11}, boxWidth:10}} },
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:"#ECEEF1"}, ticks:{font:{size:10}, precision:0} },
+      },
+    },
+  };
+}
+
+function slipChartConfig(slip){
+  const labels = slip.bins.map(b => b.label);
+  const data   = slip.bins.map(b => b.count);
+  const colors = slip.bins.map((b,i) => i === 0 ? COLOR.completed : (i <= 2 ? "#FECF48" : COLOR.late));
+  return {
+    type:"bar",
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:0, borderRadius:4 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{ label: ctx => ctx.parsed.y + " task" + (ctx.parsed.y === 1 ? "" : "s") }} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:10}, maxRotation:0, autoSkip:false} },
+        y:{ beginAtZero:true, grid:{color:"#ECEEF1"}, ticks:{font:{size:10}, precision:0} },
+      },
+    },
+  };
+}
+
+function burndownChartConfig(bd){
+  const actualPts = bd.series.map(s => ({ x:s.date.valueOf(), y:s.remaining }));
+  const datasets = [{
+    label:"Remaining tasks",
+    data:actualPts,
+    borderColor:COLOR.wip, backgroundColor:"rgba(19,118,212,0.08)",
+    fill:true, borderWidth:2, pointRadius:0, tension:0.15,
+  }];
+  if (bd.forecast) {
+    const last = bd.series[bd.series.length-1];
+    datasets.push({
+      label:"Forecast (linear)",
+      data:[{x:last.date.valueOf(), y:last.remaining}, {x:bd.forecast.finish.valueOf(), y:0}],
+      borderColor:COLOR.forecast, backgroundColor:COLOR.forecastFill,
+      borderDash:[6,4], borderWidth:2, pointRadius:0, fill:false, tension:0,
+    });
+  }
+  return {
+    type:"line",
+    data:{ datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false, parsing:false,
+      plugins:{
+        legend:{position:"bottom", labels:{font:{size:11}, boxWidth:14}},
+        tooltip:{ callbacks:{ title: items => items[0] ? new Date(items[0].parsed.x).toLocaleDateString() : "" }},
+      },
+      scales:{
+        x:{ type:"linear",
+            ticks:{ font:{size:10}, callback: v => new Date(v).toLocaleDateString(undefined,{month:"short",day:"numeric"}) },
+            grid:{display:false} },
+        y:{ beginAtZero:true, grid:{color:"#ECEEF1"}, ticks:{font:{size:10}, precision:0}, title:{display:true, text:"Remaining tasks", font:{size:11, weight:"600"}} },
+      },
+    },
+  };
+}
+
+/* Render -------------------------------------------------- */
+function renderDelivery(){
+  const slot = $("#delivery-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) {
+    slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return;
+  }
+  if (!state.rows.length) {
+    slot.innerHTML = '<div class="narrative-loading">Loading delivery status…</div>'; return;
+  }
+
+  const a = analyzeProject(state.rows, state.courses);
+  const d = analyzeDelivery(state.rows, state.courses);
+
+  slot.innerHTML =
+    sectionVerdictAndBottleneck(a, d) +
+    sectionTwoLens(d) +
+    sectionSignoff(d) +
+    sectionAtRiskAndSlip(d) +
+    sectionBurndown(d) +
+    sectionWorkflowBreakdown(d);
+
+  // Init charts after innerHTML
+  makeChart("ch-lens-delivered", lensChartConfig(d.overview.deliveredPct, COLOR.completed));
+  makeChart("ch-lens-step",      lensChartConfig(d.overview.stepPct, COLOR.wip));
+  makeChart("ch-signoff",        signoffChartConfig(d));
+  makeChart("ch-slip",           slipChartConfig(d.slip));
+  if (d.burndown) makeChart("ch-burndown", burndownChartConfig(d.burndown));
+
+  state.tabRendered.add("delivery");
+}
+
+function sectionVerdictAndBottleneck(a, d){
+  const tone = a.overall.verdictTone;
+  const verdictTitle = 'Microsoft OCs is <span class="accent ' + tone + '">' + escapeHtml(a.overall.verdict) + '</span>';
+  const b = d.bottleneck;
+  const hasBottleneck = b.overdue > 0 || b.wip > 0;
+  const bnTone = b.overdue > 0 ? "red" : (b.wip > 0 ? "amber" : "gray");
+  const reasonLabel = b.overdue > 0 ? "overdue" : "in progress";
+  const reasonCount = b.overdue > 0 ? b.overdue : b.wip;
+  const bnTitle = hasBottleneck
+    ? escapeHtml(b.name) + ' has the most ' + reasonLabel
+    : "No bottleneck right now";
+  const bnSub = hasBottleneck
+    ? '<b>' + reasonCount + '</b> ' + reasonLabel + ' task' + (reasonCount === 1 ? "" : "s") +
+      ' across <b>' + b.affectedCourses + '</b> course' + (b.affectedCourses === 1 ? "" : "s") + "."
+    : "Either nothing is in flight yet, or all in-flight tasks are on schedule.";
+  const driverList = hasBottleneck && b.worstTask
+    ? '<ul class="driver-list">' +
+        '<li><span class="label">Worst task</span><span class="value">' + escapeHtml(b.worstTask) + '</span></li>' +
+        '<li><span class="label">Count</span><span class="value">' + b.worstTaskCount + '</span></li>' +
+      '</ul>'
+    : '';
+
+  return (
+    '<div class="dlv-grid-top">' +
+      '<div class="dlv-card ' + tone + '">' +
+        '<div class="top-rail"></div>' +
+        '<div class="eyebrow"><span class="ddot"></span> Verdict</div>' +
+        '<h2 class="title">' + verdictTitle + '</h2>' +
+        '<p class="sub">' + escapeHtml(a.overall.summary) + '</p>' +
+        '<div class="meta">' +
+          '<span><b>' + a.overall.delivered + '</b> / ' + a.overall.totalCourses + ' courses delivered</span>' +
+          '<span><b>' + a.overall.totalOverdue + '</b> overdue tasks</span>' +
+          '<span><b>' + a.overall.pastDueCount + '</b> deliveries past date</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dlv-card bottleneck-card ' + bnTone + '">' +
+        '<div class="top-rail"></div>' +
+        '<div class="eyebrow"><span class="ddot"></span> Bottleneck</div>' +
+        (hasBottleneck ? '<div class="phase-pill">' + escapeHtml(b.name) + '</div>' : '') +
+        '<h2 class="title" style="font-size:18px">' + bnTitle + '</h2>' +
+        '<p class="sub">' + bnSub + '</p>' +
+        driverList +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function sectionTwoLens(d){
+  const o = d.overview;
+  return (
+    '<div class="lens-grid">' +
+      '<div class="lens-card">' +
+        '<div class="donut-wrap">' +
+          '<canvas id="ch-lens-delivered"></canvas>' +
+          '<div class="donut-center">' +
+            '<div class="big">' + o.deliveredPct + '%</div>' +
+            '<div class="sm">Delivered</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lens-body">' +
+          '<div class="lens-label">Course-level</div>' +
+          '<h3>Courses Delivered</h3>' +
+          '<p><b>' + o.delivered + '</b> of <b>' + o.totalCourses + '</b> courses have the Delivery task marked Completed.</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lens-card">' +
+        '<div class="donut-wrap">' +
+          '<canvas id="ch-lens-step"></canvas>' +
+          '<div class="donut-center">' +
+            '<div class="big">' + o.stepPct + '%</div>' +
+            '<div class="sm">All Tasks</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lens-body">' +
+          '<div class="lens-label">Step-level</div>' +
+          '<h3>Tasks Complete</h3>' +
+          '<p><b>' + o.completedTasks + '</b> of <b>' + o.totalTasks + '</b> tasks across all 22 lifecycle steps for all courses.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function sectionSignoff(d){
+  // Build table
+  const head = '<thead><tr><th>Cohort</th>' +
+    LIFECYCLE_PHASES.map(p => '<th>' + p.charAt(0) + p.slice(1).toLowerCase() + '</th>').join("") +
+    '<th class="cumcol">Delivered</th></tr></thead>';
+  const cohortRows = d.cohorts.map(c => {
+    const row = d.signoffByCohort[c];
+    return '<tr>' +
+      '<td>' + escapeHtml(c) + ' <span style="color:var(--ink-4);font-weight:600">(' + row.total + ')</span></td>' +
+      LIFECYCLE_PHASES.map(p => signoffTd(row.perPhase[p], row.total)).join("") +
+      signoffTd(row.cumulative, row.total, true) +
+    '</tr>';
+  }).join("");
+  const totalRow = '<tr class="totalrow">' +
+    '<td>Total <span style="color:var(--ink-4);font-weight:600">(' + d.signoffTotal.total + ')</span></td>' +
+    LIFECYCLE_PHASES.map(p => signoffTd(d.signoffTotal.perPhase[p], d.signoffTotal.total)).join("") +
+    signoffTd(d.signoffTotal.cumulative, d.signoffTotal.total, true) +
+  '</tr>';
+  const table = '<table class="signoff-table">' + head + '<tbody>' + cohortRows + totalRow + '</tbody></table>';
+
+  return (
+    '<div class="dlv-section-title"><h2>Signoff scorecards</h2><div class="rule"></div></div>' +
+    '<div class="signoff-section">' +
+      '<div class="signoff-table-wrap">' +
+        '<h3>Courses past each phase</h3>' +
+        table +
+        '<div class="legend-row">' +
+          '<span class="lg"><span class="sw completed"></span>Phase signed off = all tasks in that phase Completed</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="chart-wrap">' +
+        '<h3>Cumulative signoff by cohort</h3>' +
+        '<div class="canvas-box"><canvas id="ch-signoff"></canvas></div>' +
+        '<div class="caption">Bars: courses by cohort past each phase. Line: total signed off (all cohorts).</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function signoffTd(val, total, isCum){
+  const pct = total ? (100 * val / total) : 0;
+  return '<td' + (isCum ? ' class="cumcol"' : '') + '>' +
+    '<div class="so-cell"><div class="so-num">' + val + ' <span style="color:var(--ink-4);font-weight:600">/ ' + total + '</span></div>' +
+    '<div class="so-bar"><span style="width:' + pct + '%"></span></div></div></td>';
+}
+
+function sectionAtRiskAndSlip(d){
+  const atRiskBody = d.atRisk.length === 0
+    ? '<div class="atrisk-empty">No undelivered courses are at risk right now — no overdue tasks and no near-term delivery pressure.</div>'
+    : '<div class="atrisk-list">' + d.atRisk.map((r,i) => {
+        const meta = [];
+        if (r.overdue > 0) meta.push('<b style="color:var(--rag-red)">' + r.overdue + " overdue</b>");
+        meta.push('<b>' + r.open + '</b> open');
+        if (r.daysToDelivery !== null) {
+          if (r.daysToDelivery < 0) meta.push('Delivery <b style="color:var(--rag-red)">' + Math.abs(r.daysToDelivery) + 'd past</b>');
+          else meta.push('Delivery in <b>' + r.daysToDelivery + 'd</b>');
+        }
+        if (r.sequentialSignoff) meta.push('Past <b>' + r.sequentialSignoff.toLowerCase() + '</b>');
+        return '<div class="atrisk-row">' +
+          '<div class="rk-num">' + (i+1) + '</div>' +
+          '<div class="rk-body">' +
+            '<div class="rk-title" title="' + escapeHtml(r.course.title) + '">' + escapeHtml(r.course.title) + '</div>' +
+            '<div class="rk-meta">' + meta.join(" · ") + '</div>' +
+          '</div>' +
+          '<div class="rk-score" title="Risk score">' + r.score + '</div>' +
+        '</div>';
+      }).join("") + '</div>';
+
+  const slipCaption = d.slip.total === 0
+    ? 'No completed tasks with both planned and actual end dates yet. Histogram will populate as completions roll in.'
+    : d.slip.total + ' completed task' + (d.slip.total === 1 ? '' : 's') + ' with both planned and actual end dates.';
+
+  return (
+    '<div class="dlv-section-title"><h2>Risk Watch</h2><div class="rule"></div></div>' +
+    '<div class="risk-slip-grid">' +
+      '<div class="signoff-table-wrap">' +
+        '<h3>Top 5 at-risk courses</h3>' +
+        atRiskBody +
+      '</div>' +
+      '<div class="chart-wrap">' +
+        '<h3>Slip distribution</h3>' +
+        '<div class="canvas-box"><canvas id="ch-slip"></canvas></div>' +
+        '<div class="caption">' + escapeHtml(slipCaption) + '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function sectionBurndown(d){
+  if (!d.burndown) {
+    return (
+      '<div class="dlv-section-title"><h2>Burndown</h2><div class="rule"></div></div>' +
+      '<div class="chart-wrap">' +
+        '<h3>Remaining tasks over time</h3>' +
+        '<div class="atrisk-empty" style="background:var(--brand-blue-50);border-color:#D0E2F6;color:var(--brand-blue-700)">No completed tasks with actual end dates yet — burndown will appear once work starts closing.</div>' +
+      '</div>'
+    );
+  }
+  const f = d.burndown.forecast;
+  const forecastNote = f
+    ? 'Linear forecast based on last-30-day velocity: <b>' + f.velocity.toFixed(2) + '</b> tasks/day. ' +
+      'Projected finish: <b>' + f.finish.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) + '</b>.'
+    : 'Not enough recent completion data to extrapolate a forecast yet.';
+  return (
+    '<div class="dlv-section-title"><h2>Burndown</h2><div class="rule"></div></div>' +
+    '<div class="chart-wrap">' +
+      '<h3>Remaining tasks over time</h3>' +
+      '<div class="canvas-box tall"><canvas id="ch-burndown"></canvas></div>' +
+      '<div class="caption">' + forecastNote + ' A confidence band will be added once 60+ days of completion history exist.</div>' +
+    '</div>'
+  );
+}
+
+function sectionWorkflowBreakdown(d){
+  return (
+    '<div class="dlv-section-title"><h2>Workflow stage breakdown</h2><div class="rule"></div></div>' +
+    '<div class="wfbreakdown">' +
+      d.workflow.map(p => {
+        const cP = p.total ? (100 * p.completed / p.total)   : 0;
+        const wP = p.total ? (100 * p.wip / p.total)         : 0;
+        const nP = p.total ? (100 * p.not_started / p.total) : 0;
+        const labelInside = (v, frac) => (frac >= 8 ? v : "");
+        return '<div class="wfb-row">' +
+          '<div class="wfb-name">' + escapeHtml(p.name) + '</div>' +
+          '<div class="wfb-bar" title="' + p.completed + ' completed · ' + p.wip + ' in progress · ' + p.not_started + ' not started">' +
+            (cP > 0 ? '<span class="s-completed" style="width:' + cP + '%">' + labelInside(p.completed, cP) + '</span>' : '') +
+            (wP > 0 ? '<span class="s-wip" style="width:' + wP + '%">' + labelInside(p.wip, wP) + '</span>' : '') +
+            (nP > 0 ? '<span class="s-ns" style="width:' + nP + '%">' + labelInside(p.not_started, nP) + '</span>' : '') +
+          '</div>' +
+          '<div class="wfb-counts">' +
+            '<span><b>' + p.completed + '</b> done</span>' +
+            '<span><b>' + p.wip + '</b> wip</span>' +
+            '<span><b>' + p.not_started + '</b> ns</span>' +
+            (p.overdue > 0 ? '<span style="color:var(--rag-red)"><b>' + p.overdue + '</b> late</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join("") +
+    '</div>' +
+    '<div class="legend-row" style="margin-top:8px">' +
+      '<span class="lg"><span class="sw completed"></span>Completed</span>' +
+      '<span class="lg"><span class="sw wip"></span>In progress</span>' +
+      '<span class="lg"><span class="sw ns"></span>Not started</span>' +
+      '<span class="lg"><span class="sw late"></span>Overdue (subset of in progress / not started)</span>' +
+    '</div>'
+  );
+}
+
+/* ============================================================
+   WORKFLOW MATRIX TAB — task order, cell status, filters
+   ============================================================ */
+const PHASE_RANK = { KICKOFF:0, DISCOVERY:1, DESIGN:2, DEVELOPMENT:3, DELIVERY:4 };
+
+/* Canonical 22-task order from first-appearance per phase. */
+function deriveTaskOrder(rows){
+  const first = new Map();
+  rows.forEach((r, idx) => {
+    if (r.task && !first.has(r.task)) {
+      first.set(r.task, { task:r.task, lifecycle_phase:r.lifecycle_phase, idx });
+    }
+  });
+  const arr = Array.from(first.values()).sort((a,b) => {
+    const pa = PHASE_RANK[a.lifecycle_phase] != null ? PHASE_RANK[a.lifecycle_phase] : 99;
+    const pb = PHASE_RANK[b.lifecycle_phase] != null ? PHASE_RANK[b.lifecycle_phase] : 99;
+    if (pa !== pb) return pa - pb;
+    return a.idx - b.idx;
+  });
+  // Tag each entry with sequence number (1-based) and whether it's first-of-phase
+  let prevPhase = null;
+  arr.forEach((t, i) => {
+    t.num = i + 1;
+    t.firstOfPhase = t.lifecycle_phase !== prevPhase;
+    prevPhase = t.lifecycle_phase;
+  });
+  return arr;
+}
+
+/* Cell status: completed | wip | wip-late | ready | yts | missing */
+function cellStatus(task, idx, taskByName, taskOrder){
+  if (!task) return "missing";
+  const s = statusOf(task);
+  if (s === "completed") return "completed";
+  if (s === "in progress") {
+    const pe = parseSheetDate(task.planned_end_date);
+    return (pe && pe < todayMidnight()) ? "wip-late" : "wip";
+  }
+  // not started — check predecessor
+  if (idx === 0) return "ready";
+  const prevName = taskOrder[idx-1].task;
+  const prev = taskByName[prevName];
+  if (prev && statusOf(prev) === "completed") return "ready";
+  return "yts";
+}
+
+function analyzeMatrix(rows, courses){
+  const taskOrder = deriveTaskOrder(rows);
+  const grid = courses.map(c => {
+    const byName = {};
+    c.tasks.forEach(t => byName[t.task] = t);
+    const cells = taskOrder.map((to, i) => ({
+      idx: i, to, task: byName[to.task] || null,
+      status: cellStatus(byName[to.task], i, byName, taskOrder),
+    }));
+    return { course:c, cells };
+  });
+
+  // Totals
+  const totals = { completed:0, wip:0, "wip-late":0, ready:0, yts:0, missing:0 };
+  grid.forEach(row => row.cells.forEach(cell => totals[cell.status]++));
+
+  // Worst phase (most overdue+late cells)
+  const phaseCount = {};
+  LIFECYCLE_PHASES.forEach(p => phaseCount[p] = { late:0, ready:0, wip:0 });
+  grid.forEach(row => row.cells.forEach(cell => {
+    const ph = cell.to.lifecycle_phase;
+    if (!phaseCount[ph]) phaseCount[ph] = { late:0, ready:0, wip:0 };
+    if (cell.status === "wip-late") phaseCount[ph].late++;
+    if (cell.status === "ready")    phaseCount[ph].ready++;
+    if (cell.status === "wip")      phaseCount[ph].wip++;
+  }));
+
+  // For filter UI: distinct cohorts + SMEs
+  const cohorts = Array.from(new Set(courses.map(c => c.phase).filter(Boolean))).sort();
+  const smes = Array.from(new Set(courses.map(c => c.sme).filter(Boolean))).sort();
+
+  return { taskOrder, grid, totals, phaseCount, cohorts, smes };
+}
+
+function filterMatrix(m, filters){
+  const q = (filters.search || "").trim().toLowerCase();
+  let rows = m.grid.filter(row => {
+    const c = row.course;
+    if (filters.cohort !== "all" && c.phase !== filters.cohort) return false;
+    if (filters.sme !== "all" && c.sme !== filters.sme) return false;
+    if (q && !(String(c.title||"").toLowerCase().includes(q))) return false;
+    return true;
+  });
+  // Sort
+  switch (filters.sort) {
+    case "title":
+      rows = rows.slice().sort((a,b) => String(a.course.title).localeCompare(String(b.course.title)));
+      break;
+    case "completion":
+      rows = rows.slice().sort((a,b) => {
+        const ca = a.cells.filter(c => c.status === "completed").length;
+        const cb = b.cells.filter(c => c.status === "completed").length;
+        return cb - ca;
+      });
+      break;
+    case "overdue":
+      rows = rows.slice().sort((a,b) => {
+        const oa = a.cells.filter(c => c.status === "wip-late").length;
+        const ob = b.cells.filter(c => c.status === "wip-late").length;
+        return ob - oa;
+      });
+      break;
+    default:
+      // default: cohort + rank already from groupCourses
+      break;
+  }
+  return rows;
+}
+
+/* Render --------------------------------------------------- */
+function renderMatrix(){
+  const slot = $("#matrix-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) {
+    slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return;
+  }
+  if (!state.rows.length) {
+    slot.innerHTML = '<div class="narrative-loading">Loading workflow matrix…</div>'; return;
+  }
+
+  const m = analyzeMatrix(state.rows, state.courses);
+  const filtered = filterMatrix(m, state.matrixFilters);
+
+  // Filtered totals (for the result count chip)
+  const fTotals = { completed:0, wip:0, "wip-late":0, ready:0, yts:0, missing:0 };
+  filtered.forEach(row => row.cells.forEach(c => fTotals[c.status]++));
+
+  slot.innerHTML =
+    matrixStatBand(m.totals) +
+    matrixToolbar(m, filtered.length, m.grid.length) +
+    matrixSummary(m, filtered, fTotals) +
+    matrixLegend(m.taskOrder) +
+    matrixStatusLegend() +
+    matrixGrid(m.taskOrder, filtered);
+
+  wireMatrixFilters();
+  state.tabRendered.add("matrix");
+}
+
+function matrixStatBand(t){
+  const wipTotal = t.wip + t["wip-late"];
+  const lateNote = t["wip-late"] > 0 ? ' <span style="color:var(--rag-red)">· ' + t["wip-late"] + ' late</span>' : '';
+  return (
+    '<div class="mx-statband">' +
+      '<div class="mx-stat done"><div class="lbl">Completed</div><div class="val">' + t.completed.toLocaleString() + '</div><div class="sub">tasks done</div></div>' +
+      '<div class="mx-stat wip"><div class="lbl">In progress</div><div class="val">' + wipTotal.toLocaleString() + '</div><div class="sub">currently being worked' + lateNote + '</div></div>' +
+      '<div class="mx-stat ready"><div class="lbl">Ready to pick up</div><div class="val">' + t.ready.toLocaleString() + '</div><div class="sub">predecessor complete</div></div>' +
+      '<div class="mx-stat yts"><div class="lbl">Yet to start</div><div class="val">' + t.yts.toLocaleString() + '</div><div class="sub">awaiting predecessor</div></div>' +
+    '</div>'
+  );
+}
+
+function matrixToolbar(m, visibleCount, totalCount){
+  const f = state.matrixFilters;
+  const cohortOpts = ['<option value="all"' + (f.cohort==="all"?' selected':'') + '>All cohorts</option>']
+    .concat(m.cohorts.map(c => '<option value="' + escapeHtml(c) + '"' + (f.cohort===c?' selected':'') + '>' + escapeHtml(c) + '</option>')).join("");
+  const smeOpts = ['<option value="all"' + (f.sme==="all"?' selected':'') + '>All SMEs</option>']
+    .concat(m.smes.map(s => '<option value="' + escapeHtml(s) + '"' + (f.sme===s?' selected':'') + '>' + escapeHtml(s) + '</option>')).join("");
+  const sortOpts = [
+    ['default', 'Default (cohort + rank)'],
+    ['title',   'Title (A→Z)'],
+    ['completion', 'Most complete'],
+    ['overdue', 'Most overdue'],
+  ].map(([v,l]) => '<option value="' + v + '"' + (f.sort===v?' selected':'') + '>' + escapeHtml(l) + '</option>').join("");
+
+  return (
+    '<div class="mx-toolbar">' +
+      '<div class="field"><label>Cohort</label><select id="mx-f-cohort">' + cohortOpts + '</select></div>' +
+      '<div class="field"><label>SME</label><select id="mx-f-sme">' + smeOpts + '</select></div>' +
+      '<div class="field"><label>Sort</label><select id="mx-f-sort">' + sortOpts + '</select></div>' +
+      '<div class="field"><label>Search</label><input type="search" id="mx-f-search" placeholder="Course title contains…" value="' + escapeHtml(f.search) + '" /></div>' +
+      '<button class="clear-btn" id="mx-f-clear" type="button">Clear</button>' +
+      '<div class="result-count"><b>' + visibleCount + '</b> of ' + totalCount + ' courses</div>' +
+    '</div>'
+  );
+}
+
+function matrixSummary(m, filtered, fTotals){
+  const totalCells = m.taskOrder.length * m.grid.length;
+  const visibleCells = m.taskOrder.length * filtered.length;
+  const line1 =
+    '<div><b>' + totalCells.toLocaleString() + '</b> cells across <b>' + m.grid.length + '</b> courses × <b>' + m.taskOrder.length + '</b> lifecycle tasks · ' +
+    'showing <b>' + visibleCells.toLocaleString() + '</b> cells in <b>' + filtered.length + '</b> filtered course' + (filtered.length === 1 ? '' : 's') + '.</div>';
+
+  // Worst phase
+  const phasePairs = Object.entries(m.phaseCount).sort((a,b) => b[1].late - a[1].late);
+  const worstPhase = phasePairs[0];
+  const line2 = (worstPhase && worstPhase[1].late > 0)
+    ? '<div><b>Most overdue work:</b> <span class="late">' + escapeHtml(worstPhase[0]) + ' (' + worstPhase[1].late + ' late)</span>' +
+      (worstPhase[1].wip ? ' · ' + worstPhase[1].wip + ' in progress' : '') + '.</div>'
+    : '<div><b>No tasks are currently overdue.</b> All in-flight work is on schedule.</div>';
+
+  // Ready callout
+  const readyByPhase = {};
+  m.grid.forEach(row => row.cells.forEach(c => {
+    if (c.status === "ready") {
+      readyByPhase[c.to.lifecycle_phase] = (readyByPhase[c.to.lifecycle_phase] || 0) + 1;
+    }
+  }));
+  const readyEntries = Object.entries(readyByPhase).sort((a,b) => b[1]-a[1]);
+  const line3 = (m.totals.ready > 0 && readyEntries[0])
+    ? '<div><b>' + m.totals.ready + '</b> task' + (m.totals.ready===1?'':'s') + ' ready to pick up — concentrated in <b>' + escapeHtml(readyEntries[0][0]) + '</b> (' + readyEntries[0][1] + ').</div>'
+    : '<div>No tasks ready to pick up — predecessors are not yet complete.</div>';
+
+  return '<div class="mx-summary">' + line1 + line2 + line3 + '</div>';
+}
+
+function matrixLegend(taskOrder){
+  const groups = {};
+  taskOrder.forEach(t => {
+    if (!groups[t.lifecycle_phase]) groups[t.lifecycle_phase] = [];
+    groups[t.lifecycle_phase].push(t);
+  });
+  return '<div class="mx-legend">' +
+    LIFECYCLE_PHASES.filter(p => groups[p]).map(p =>
+      '<div class="lg-group">' +
+        '<div class="lg-head ' + p + '"><span class="sw"></span><span>' + p + '</span></div>' +
+        '<ol start="' + groups[p][0].num + '">' +
+          groups[p].map(t => '<li>' + escapeHtml(t.task) + '</li>').join("") +
+        '</ol>' +
+      '</div>'
+    ).join("") +
+  '</div>';
+}
+
+function matrixStatusLegend(){
+  return (
+    '<div class="mx-status-legend">' +
+      '<span class="lg"><span class="sw completed"></span>Completed</span>' +
+      '<span class="lg"><span class="sw wip"></span>In progress</span>' +
+      '<span class="lg"><span class="sw wip-late"></span>In progress (late)</span>' +
+      '<span class="lg"><span class="sw ready"></span>Ready to pick up</span>' +
+      '<span class="lg"><span class="sw yts"></span>Yet to start</span>' +
+      '<span class="lg"><span class="sw missing"></span>Missing row</span>' +
+    '</div>'
+  );
+}
+
+function matrixGrid(taskOrder, filtered){
+  if (filtered.length === 0) {
+    return '<div class="mx-empty">No courses match the current filters. Clear filters to see all courses.</div>';
+  }
+  const head = '<thead><tr>' +
+    '<th class="mx-meta-head">Course</th>' +
+    taskOrder.map(t => {
+      const cls = 'mx-num ph-' + t.lifecycle_phase + (t.firstOfPhase ? ' first-of-phase' : '');
+      return '<th class="' + cls + '" title="' + escapeHtml(t.task) + ' — ' + escapeHtml(t.lifecycle_phase) + '">' + t.num + '</th>';
+    }).join("") +
+  '</tr></thead>';
+
+  const body = '<tbody>' + filtered.map(row => {
+    const c = row.course;
+    const cohortClass = c.phase === "PHASE 2" ? "p2" : (c.phase === "PHASE 3" ? "p3" : "other");
+    const cohortLabel = c.phase ? c.phase.replace("PHASE ","P") : "—";
+    const smeBit = c.sme ? '<span class="row-sme">SME: ' + escapeHtml(c.sme) + (c.lm_2u_hire ? " · " + escapeHtml(c.lm_2u_hire) : "") + '</span>' : '';
+    const rankBit = c.rank ? '<span class="row-rank">#' + escapeHtml(String(c.rank)) + '</span>' : '';
+    const cells = row.cells.map(cell => {
+      const phaseCls = ' ph-' + cell.to.lifecycle_phase;
+      const firstCls = cell.to.firstOfPhase ? ' first-of-phase' : '';
+      const tip = cellTooltip(c, cell);
+      return '<td class="mx-cell s-' + cell.status + phaseCls + firstCls + '" title="' + escapeHtml(tip) + '"><i></i></td>';
+    }).join("");
+    return '<tr>' +
+      '<td class="mx-meta">' +
+        '<div>' + rankBit + '<span class="row-cohort ' + cohortClass + '">' + cohortLabel + '</span>' +
+        '<span class="row-title" title="' + escapeHtml(c.title) + '">' + escapeHtml(c.title) + '</span></div>' +
+        smeBit +
+      '</td>' +
+      cells +
+    '</tr>';
+  }).join("") + '</tbody>';
+
+  return '<div class="matrix-wrap"><table class="matrix-table">' + head + body + '</table></div>';
+}
+
+function cellTooltip(course, cell){
+  const label = {
+    "completed":"Completed", "wip":"In progress", "wip-late":"In progress (late)",
+    "ready":"Ready to pick up", "yts":"Yet to start", "missing":"No row in sheet",
+  }[cell.status] || cell.status;
+  const lines = [
+    course.title,
+    cell.to.num + ". " + cell.to.task + "  (" + cell.to.lifecycle_phase + ")",
+    "Status: " + label,
+  ];
+  if (cell.task) {
+    if (cell.task.team_member_name) lines.push("Owner: " + cell.task.team_member_name);
+    if (cell.task.planned_end_date)  lines.push("Planned end: " + cell.task.planned_end_date);
+    if (cell.task.actual_end_date)   lines.push("Actual end: " + cell.task.actual_end_date);
+  }
+  return lines.join("\n");
+}
+
+function wireMatrixFilters(){
+  const cohort = $("#mx-f-cohort"), sme = $("#mx-f-sme"), sort = $("#mx-f-sort"), search = $("#mx-f-search"), clear = $("#mx-f-clear");
+  if (cohort) cohort.addEventListener("change", e => { state.matrixFilters.cohort = e.target.value; renderMatrix(); });
+  if (sme)    sme.addEventListener("change",    e => { state.matrixFilters.sme    = e.target.value; renderMatrix(); });
+  if (sort)   sort.addEventListener("change",   e => { state.matrixFilters.sort   = e.target.value; renderMatrix(); });
+  if (search) {
+    let t;
+    search.addEventListener("input", e => {
+      clearTimeout(t);
+      const v = e.target.value;
+      t = setTimeout(() => { state.matrixFilters.search = v; renderMatrix(); }, 180);
+    });
+  }
+  if (clear) clear.addEventListener("click", () => {
+    state.matrixFilters = { cohort:"all", sme:"all", search:"", sort:"default" };
+    renderMatrix();
+  });
+}
+
+/* ============================================================
+   DATE-WISE COMPLETION TAB — heatmap + lists + copy-as-TSV
+   ============================================================ */
+function fmtSheetDate(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dy = String(d.getDate()).padStart(2,"0");
+  return y + "-" + m + "-" + dy;
+}
+function fmtNiceDate(d){
+  return d.toLocaleDateString(undefined, { weekday:"short", year:"numeric", month:"short", day:"numeric" });
+}
+
+function analyzeDatewise(rows){
+  const completions = [];
+  let missingEnd = 0;
+  rows.forEach(r => {
+    if (statusOf(r) !== "completed") return;
+    if (!r.actual_end_date) { missingEnd++; return; }
+    completions.push({
+      date: r.actual_end_date,
+      course: r.course_title || "",
+      cohort: r.phase || "",
+      task: r.task || "",
+      lifecycle_phase: r.lifecycle_phase || "",
+      owner: r.team_member_name || "",
+      hours: (r.actual_hours_taken !== "" && r.actual_hours_taken != null)
+              ? r.actual_hours_taken
+              : (r.estimated_effort !== "" && r.estimated_effort != null ? r.estimated_effort : ""),
+      hours_actual: (r.actual_hours_taken !== "" && r.actual_hours_taken != null),
+    });
+  });
+
+  // Sort by date desc, then course
+  completions.sort((a,b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return String(a.course).localeCompare(b.course);
+  });
+
+  const byDate = new Map();
+  const byCourse = new Map();
+  completions.forEach(c => {
+    if (!byDate.has(c.date)) byDate.set(c.date, []);
+    byDate.get(c.date).push(c);
+    if (!byCourse.has(c.course)) byCourse.set(c.course, []);
+    byCourse.get(c.course).push(c);
+  });
+
+  // Earliest / latest / best day / streak
+  let earliest = null, latest = null, bestDate = null, bestCount = 0;
+  byDate.forEach((arr, key) => {
+    const d = parseSheetDate(key);
+    if (!d) return;
+    if (!earliest || d < earliest) earliest = d;
+    if (!latest || d > latest) latest = d;
+    if (arr.length > bestCount) { bestCount = arr.length; bestDate = key; }
+  });
+
+  return {
+    completions, byDate, byCourse,
+    total: completions.length,
+    missingEnd,
+    distinctDates: byDate.size,
+    distinctCourses: byCourse.size,
+    earliest, latest, bestDate, bestCount,
+  };
+}
+
+function heatmapBuckets(maxCount){
+  // 4 non-zero buckets, scaled to data
+  if (maxCount <= 0) return [1,2,3,4];
+  if (maxCount <= 4) return [1,2,3,4];
+  const t1 = 1;
+  const t2 = Math.max(2, Math.ceil(maxCount * 0.33));
+  const t3 = Math.max(t2 + 1, Math.ceil(maxCount * 0.66));
+  const t4 = Math.max(t3 + 1, maxCount);
+  return [t1, t2, t3, t4];
+}
+function heatClass(count, thresholds){
+  if (count === 0) return "h0";
+  if (count < thresholds[1]) return "h1";
+  if (count < thresholds[2]) return "h2";
+  if (count < thresholds[3]) return "h3";
+  return "h4";
+}
+
+function buildHeatmapWindow(d){
+  const today = todayMidnight();
+  let start = d.earliest ? new Date(d.earliest) : new Date(today.getTime() - 56*86400000);
+  // Min 8 weeks back from today
+  const minStart = new Date(today.getTime() - 56*86400000);
+  if (start > minStart) start = minStart;
+  // Back to Sunday
+  start.setDate(start.getDate() - start.getDay());
+  start.setHours(0,0,0,0);
+  // End at Saturday of this week
+  const end = new Date(today);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+  end.setHours(0,0,0,0);
+
+  const cells = [];
+  let max = 0;
+  for (let dt = new Date(start); dt <= end; dt = new Date(dt.getTime() + 86400000)) {
+    const key = fmtSheetDate(dt);
+    const list = d.byDate.get(key) || [];
+    const count = list.length;
+    const future = dt > today;
+    cells.push({ date: new Date(dt), key, count, future });
+    if (count > max) max = count;
+  }
+  return { start, end, cells, max };
+}
+
+/* Renderer ---------------------------------------------------- */
+function renderDatewise(){
+  const slot = $("#datewise-content");
+  if (!slot) return;
+  if (state.fetchError && !state.raw) {
+    slot.innerHTML = '<div class="narrative-empty">No project data available.</div>'; return;
+  }
+  if (!state.rows.length) {
+    slot.innerHTML = '<div class="narrative-loading">Loading completion history…</div>'; return;
+  }
+
+  const d = analyzeDatewise(state.rows);
+
+  let viewHTML = "";
+  if (state.datewiseView === "heatmap")     viewHTML = datewiseHeatmap(d);
+  else if (state.datewiseView === "bydate") viewHTML = datewiseByDateList(d);
+  else                                       viewHTML = datewiseByCourseList(d);
+
+  slot.innerHTML =
+    datewiseStatBand(d) +
+    datewiseToolbar(d) +
+    (d.missingEnd > 0 ? datewiseHygieneCallout(d) : "") +
+    viewHTML;
+
+  wireDatewise(d);
+  state.tabRendered.add("datewise");
+}
+
+function datewiseStatBand(d){
+  const dailyAvg = d.distinctDates ? (d.total / d.distinctDates).toFixed(1) : "0";
+  const bestLabel = d.bestDate ? fmtNiceDate(parseSheetDate(d.bestDate)) : "—";
+  return (
+    '<div class="dw-statband">' +
+      '<div class="mx-stat"><div class="lbl">Completions logged</div><div class="val">' + d.total.toLocaleString() + '</div><div class="sub">tasks with actual end date</div></div>' +
+      '<div class="mx-stat"><div class="lbl">Distinct dates</div><div class="val">' + d.distinctDates + '</div><div class="sub">days with at least one close</div></div>' +
+      '<div class="mx-stat"><div class="lbl">Best day</div><div class="val">' + d.bestCount + '</div><div class="sub">' + escapeHtml(bestLabel) + '</div></div>' +
+      (d.missingEnd > 0
+        ? '<div class="mx-stat warn"><div class="lbl">Missing end date</div><div class="val">' + d.missingEnd + '</div><div class="sub">Completed status but no Actual End Date</div></div>'
+        : '<div class="mx-stat"><div class="lbl">Daily average</div><div class="val">' + dailyAvg + '</div><div class="sub">completions / active day</div></div>'
+      ) +
+    '</div>'
+  );
+}
+
+function datewiseToolbar(d){
+  const v = state.datewiseView;
+  const tabBtn = (id, label, svg) =>
+    '<button type="button" data-dw-view="' + id + '" aria-selected="' + (v === id ? "true" : "false") + '">' +
+      svg + '<span>' + label + '</span>' +
+    '</button>';
+
+  const icons = {
+    heatmap:  '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="19" y="3" width="2" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/><rect x="3" y="19" width="6" height="2" rx="1"/></svg>',
+    bydate:   '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    bycourse: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  };
+
+  const copyEnabled = v !== "heatmap";
+  return (
+    '<div class="dw-toolbar">' +
+      '<div class="dw-toggle" role="tablist">' +
+        tabBtn("heatmap",  "Heatmap",   icons.heatmap) +
+        tabBtn("bydate",   "By date",   icons.bydate) +
+        tabBtn("bycourse", "By course", icons.bycourse) +
+      '</div>' +
+      (copyEnabled
+        ? '<button class="dw-copy" id="dw-copy-btn" type="button">' +
+            '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+            '<span>Copy as table</span>' +
+          '</button>'
+        : '') +
+      '<div class="dw-info">' +
+        (d.earliest && d.latest
+          ? 'Range: <b>' + escapeHtml(fmtNiceDate(d.earliest)) + '</b> → <b>' + escapeHtml(fmtNiceDate(d.latest)) + '</b>'
+          : 'No completions yet') +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function datewiseHygieneCallout(d){
+  return (
+    '<div class="dw-callout">' +
+      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+      '<div><b>' + d.missingEnd + '</b> task' + (d.missingEnd === 1 ? "" : "s") + ' marked Completed but missing an Actual End Date — these are excluded from this tab and surfaced in the Discrepancies tab.</div>' +
+    '</div>'
+  );
+}
+
+function datewiseHeatmap(d){
+  const w = buildHeatmapWindow(d);
+  const thresholds = heatmapBuckets(w.max);
+  const totalWeeks = Math.ceil(w.cells.length / 7);
+
+  // Month labels: which week column starts a new month
+  const monthLabels = [];
+  let lastMonth = -1;
+  for (let wk = 0; wk < totalWeeks; wk++) {
+    const firstCell = w.cells[wk * 7];
+    if (!firstCell) break;
+    const m = firstCell.date.getMonth();
+    if (m !== lastMonth) {
+      monthLabels.push({ week: wk, label: firstCell.date.toLocaleDateString(undefined, { month:"short" }) });
+      lastMonth = m;
+    }
+  }
+  // Build month label spans (CSS grid columns 2..1+totalWeeks; col 1 is the day-label gutter)
+  const monthSpan = monthLabels.map((m,i) => {
+    const nextWk = (i + 1 < monthLabels.length) ? monthLabels[i+1].week : totalWeeks;
+    const colStart = 2 + m.week;
+    const colEnd   = 2 + nextWk;
+    return '<div class="hm-month" style="grid-column:' + colStart + ' / ' + colEnd + '"><span>' + escapeHtml(m.label) + '</span></div>';
+  }).join("");
+
+  const todayKey = fmtSheetDate(todayMidnight());
+  const cellHTML = w.cells.map(c => {
+    if (c.future) return '<div class="hm-cell future" title="' + escapeHtml(fmtNiceDate(c.date)) + ' (upcoming)"></div>';
+    const cls = heatClass(c.count, thresholds);
+    const todayMark = c.key === todayKey ? ' style="box-shadow:0 0 0 1px var(--brand-black) inset"' : "";
+    const title = fmtNiceDate(c.date) + " — " + c.count + " completion" + (c.count === 1 ? "" : "s");
+    return '<div class="hm-cell ' + cls + '" data-date="' + c.key + '" title="' + escapeHtml(title) + '"' + todayMark + '></div>';
+  }).join("");
+
+  // Quick stats
+  const last7  = w.cells.filter(c => !c.future && (todayMidnight() - c.date) / 86400000 < 7).reduce((s,c) => s+c.count, 0);
+  const last30 = w.cells.filter(c => !c.future && (todayMidnight() - c.date) / 86400000 < 30).reduce((s,c) => s+c.count, 0);
+  const dayLabels = ["", "Mon", "", "Wed", "", "Fri", ""];
+
+  return (
+    '<div class="heatmap-card">' +
+      '<h3>Completions per day</h3>' +
+      '<div class="hm-sub">Window: <b>' + escapeHtml(fmtNiceDate(w.start)) + '</b> through today. Hover any cell for date + count.</div>' +
+      '<div class="heatmap-scroll"><div class="heatmap-frame">' +
+        '<div class="hm-months" style="--hm-weeks:' + totalWeeks + '"><div class="hm-corner"></div>' + monthSpan + '</div>' +
+        '<div class="hm-body">' +
+          '<div class="hm-day-labels">' + dayLabels.map(l => '<span>' + l + '</span>').join("") + '</div>' +
+          '<div class="hm-grid" style="--hm-weeks:' + totalWeeks + '">' + cellHTML + '</div>' +
+        '</div>' +
+      '</div></div>' +
+      '<div class="hm-legend">' +
+        'Less <span class="sw h0"></span><span class="sw h1"></span><span class="sw h2"></span><span class="sw h3"></span><span class="sw h4"></span> More' +
+      '</div>' +
+      '<div class="hm-quick">' +
+        '<div class="q"><div class="lbl">Last 7 days</div><div class="val">' + last7 + '</div><div class="sub">completions</div></div>' +
+        '<div class="q"><div class="lbl">Last 30 days</div><div class="val">' + last30 + '</div><div class="sub">completions</div></div>' +
+        '<div class="q"><div class="lbl">Window total</div><div class="val">' + w.cells.reduce((s,c) => s+c.count, 0) + '</div><div class="sub">in the visible range</div></div>' +
+        '<div class="q"><div class="lbl">Color bins</div><div class="val" style="font-size:13px;font-family:var(--mono)">' + thresholds.join(" / ") + '</div><div class="sub">tasks/day thresholds</div></div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function datewiseByDateList(d){
+  if (d.total === 0) {
+    return '<div class="dw-empty">No completions with an Actual End Date recorded yet.</div>';
+  }
+  // Sort dates desc
+  const keys = Array.from(d.byDate.keys()).sort((a,b) => a < b ? 1 : -1);
+  return '<div class="dw-list">' + keys.map(key => {
+    const list = d.byDate.get(key);
+    const parsed = parseSheetDate(key);
+    return (
+      '<div class="dw-group">' +
+        '<div class="dw-group-head">' +
+          '<span class="dw-date">' + escapeHtml(key) + '</span>' +
+          '<span class="dw-title">' + escapeHtml(parsed ? fmtNiceDate(parsed) : key) + '</span>' +
+          '<span class="dw-count"><b>' + list.length + '</b> completion' + (list.length === 1 ? '' : 's') + '</span>' +
+        '</div>' +
+        '<table class="dw-table">' +
+          '<thead><tr><th>Course</th><th>Task</th><th>Phase</th><th>Owner</th><th style="text-align:right">Hrs</th></tr></thead>' +
+          '<tbody>' + list.map(c =>
+            '<tr>' +
+              '<td>' + escapeHtml(c.course) + '</td>' +
+              '<td class="dw-cell-task">' + escapeHtml(c.task) + '</td>' +
+              '<td class="dw-cell-phase">' + escapeHtml(c.lifecycle_phase) + '</td>' +
+              '<td class="dw-cell-owner">' + escapeHtml(c.owner) + '</td>' +
+              '<td class="dw-cell-hrs">' + (c.hours !== "" ? escapeHtml(String(c.hours)) + (c.hours_actual ? "" : "<span style=\"color:var(--ink-4)\">·est</span>") : "—") + '</td>' +
+            '</tr>'
+          ).join("") + '</tbody>' +
+        '</table>' +
+      '</div>'
+    );
+  }).join("") + '</div>';
+}
+
+function datewiseByCourseList(d){
+  if (d.total === 0) {
+    return '<div class="dw-empty">No completions with an Actual End Date recorded yet.</div>';
+  }
+  // Sort courses by completion count desc, ties broken alphabetically
+  const entries = Array.from(d.byCourse.entries()).sort((a,b) => {
+    if (b[1].length !== a[1].length) return b[1].length - a[1].length;
+    return String(a[0]).localeCompare(String(b[0]));
+  });
+  return '<div class="dw-list">' + entries.map(([course, list]) => {
+    const cohort = list[0] && list[0].cohort ? list[0].cohort : "";
+    return (
+      '<div class="dw-group">' +
+        '<div class="dw-group-head">' +
+          '<span class="dw-title">' + escapeHtml(course) + (cohort ? ' <span style="color:var(--ink-4);font-weight:600;font-size:11px;margin-left:6px">' + escapeHtml(cohort) + '</span>' : '') + '</span>' +
+          '<span class="dw-count"><b>' + list.length + '</b> of 22 task' + (list.length === 1 ? '' : 's') + ' complete</span>' +
+        '</div>' +
+        '<table class="dw-table">' +
+          '<thead><tr><th>Task</th><th>Phase</th><th>Completed on</th><th>Owner</th><th style="text-align:right">Hrs</th></tr></thead>' +
+          '<tbody>' + list.slice().sort((a,b) => a.date < b.date ? -1 : 1).map(c =>
+            '<tr>' +
+              '<td class="dw-cell-task">' + escapeHtml(c.task) + '</td>' +
+              '<td class="dw-cell-phase">' + escapeHtml(c.lifecycle_phase) + '</td>' +
+              '<td>' + escapeHtml(c.date) + '</td>' +
+              '<td class="dw-cell-owner">' + escapeHtml(c.owner) + '</td>' +
+              '<td class="dw-cell-hrs">' + (c.hours !== "" ? escapeHtml(String(c.hours)) + (c.hours_actual ? "" : "<span style=\"color:var(--ink-4)\">·est</span>") : "—") + '</td>' +
+            '</tr>'
+          ).join("") + '</tbody>' +
+        '</table>' +
+      '</div>'
+    );
+  }).join("") + '</div>';
+}
+
+function buildDatewiseTSV(d){
+  if (state.datewiseView === "bydate") {
+    const header = ["Date","Course","Task","Lifecycle Phase","Owner","Hours"].join("\t");
+    const lines = [header];
+    const keys = Array.from(d.byDate.keys()).sort((a,b) => a < b ? 1 : -1);
+    keys.forEach(k => d.byDate.get(k).forEach(c => {
+      lines.push([k, c.course, c.task, c.lifecycle_phase, c.owner, c.hours].join("\t"));
+    }));
+    return lines.join("\n");
+  }
+  if (state.datewiseView === "bycourse") {
+    const header = ["Course","Cohort","Task","Lifecycle Phase","Completed On","Owner","Hours"].join("\t");
+    const lines = [header];
+    const entries = Array.from(d.byCourse.entries()).sort((a,b) => {
+      if (b[1].length !== a[1].length) return b[1].length - a[1].length;
+      return String(a[0]).localeCompare(String(b[0]));
+    });
+    entries.forEach(([course, list]) => {
+      list.slice().sort((a,b) => a.date < b.date ? -1 : 1).forEach(c => {
+        lines.push([course, c.cohort, c.task, c.lifecycle_phase, c.date, c.owner, c.hours].join("\t"));
+      });
+    });
+    return lines.join("\n");
+  }
+  return "";
+}
+
+function wireDatewise(d){
+  $$('[data-dw-view]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.datewiseView = btn.getAttribute("data-dw-view");
+      renderDatewise();
+    });
+  });
+  const copyBtn = $("#dw-copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      const text = buildDatewiseTSV(d);
+      const done = () => {
+        const label = copyBtn.querySelector("span");
+        const original = label ? label.textContent : "Copy as table";
+        copyBtn.classList.add("copied");
+        if (label) label.textContent = "Copied!";
+        setTimeout(() => {
+          copyBtn.classList.remove("copied");
+          if (label) label.textContent = original;
+        }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+      } else {
+        fallbackCopy(text, done);
+      }
+    });
+  }
+}
+
+/* ============================================================
+   FETCH ORCHESTRATION
+   ============================================================ */
+async function loadData(){
+  if (state.fetchInFlight) return;
+  state.fetchInFlight = true;
+  setHealth("loading", "Loading…");
+  $("#refreshBtn").classList.add("spinning");
+  $("#refreshBtn").disabled = true;
+
+  try {
+    const data = await jsonp(CONFIG.APPS_SCRIPT_URL, 30000);
+    if (!data || data.ok === false) {
+      throw new Error(data && data.error ? data.error : "Apps Script returned an error");
+    }
+    state.raw = data;
+    state.rows = data.rows || [];
+    state.courses = groupCourses(state.rows);
+    state.lastFetchAt = new Date();
+    state.fetchError = null;
+    setHealth("ok", "Live");
+  } catch (err) {
+    state.fetchError = err.message || String(err);
+    setHealth("err", "Error");
+    console.error("[Dashboard]", err);
+  } finally {
+    state.fetchInFlight = false;
+    $("#refreshBtn").classList.remove("spinning");
+    $("#refreshBtn").disabled = false;
+    renderAll();
+  }
+}
+
+function scheduleAutoRefresh(){
+  if (state.refreshTimer) clearInterval(state.refreshTimer);
+  state.refreshTimer = setInterval(loadData, Math.max(1, CONFIG.AUTO_REFRESH_MIN) * 60 * 1000);
+}
+
+/* ============================================================
+   TAB NAV
+   ============================================================ */
+function activateTab(name){
+  $$(".tab-btn").forEach(btn => {
+    btn.setAttribute("aria-selected", btn.dataset.tab === name ? "true" : "false");
+  });
+  $$(".panel").forEach(p => {
+    p.setAttribute("aria-hidden", p.dataset.panel === name ? "false" : "true");
+  });
+  try { history.replaceState(null, "", "#" + name); } catch(e){}
+
+  // Lazy render: if this tab hasn't been rendered for the current data, do it now.
+  renderForTab(name);
+
+  // Chart.js renders at 0x0 inside display:none panels.
+  // After a tab is shown, force a resize on any charts within it.
+  if (state.charts) {
+    requestAnimationFrame(() => {
+      Object.values(state.charts).forEach(ch => {
+        try {
+          if (ch && ch.canvas && ch.canvas.offsetParent !== null) ch.resize();
+        } catch(e){}
+      });
+    });
+  }
+}
+
+function wireTabs(){
+  $$(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+  });
+  // initial from hash if valid
+  const hash = (location.hash || "").replace("#","");
+  if (hash && $('[data-tab="' + hash + '"]')) activateTab(hash);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  wireTabs();
+  renderBanner();
+
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.indexOf("script.google.com") === -1) {
+    state.fetchError = "APPS_SCRIPT_URL is not set in CONFIG.";
+    setHealth("err", "Config missing");
+    renderAll();
+    return;
+  }
+
+  $("#refreshBtn").addEventListener("click", loadData);
+  loadData();
+  scheduleAutoRefresh();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}
+</script>
+</body>
+</html>

@@ -594,7 +594,7 @@ footer.foot code{font-family:var(--mono);font-size:11px;background:var(--bg);pad
   position:sticky;left:0;top:0;z-index:5;background:var(--bg);
   text-align:left;padding:6px 12px;min-width:280px;max-width:340px;
 }
-.matrix-table thead th.mx-num{width:20px;min-width:20px;max-width:20px}
+.matrix-table thead th.mx-num{width:28px;min-width:28px;max-width:28px}
 .matrix-table thead th.mx-num.ph-KICKOFF     {background:rgba(111,66,193,0.10)}
 .matrix-table thead th.mx-num.ph-DISCOVERY   {background:rgba(19,118,212,0.10)}
 .matrix-table thead th.mx-num.ph-DESIGN      {background:rgba(27,79,140,0.10)}
@@ -632,10 +632,10 @@ footer.foot code{font-family:var(--mono);font-size:11px;background:var(--bg);pad
 }
 .matrix-table .mx-meta .row-sme{font-size:10px;color:var(--ink-4);display:block;margin-top:2px;padding-left:2px}
 .matrix-table .mx-cell{
-  width:20px;min-width:20px;max-width:20px;height:20px;text-align:center;
+  width:28px;min-width:28px;max-width:28px;height:28px;text-align:center;
 }
 .matrix-table .mx-cell > i{
-  display:inline-block;width:14px;height:14px;border-radius:3px;
+  display:inline-block;width:22px;height:22px;border-radius:4px;
   border:1px solid transparent;vertical-align:middle;
 }
 .mx-cell.s-completed > i{background:var(--st-completed)}
@@ -1259,7 +1259,7 @@ const state = {
   fetchError: null,
   refreshTimer: null,
   charts: {},           // chart.js instances keyed by canvas id
-  matrixFilters: { cohort: "all", sme: "all", search: "", sort: "default" },
+  matrixFilters: { cohort: "all", lmType: "all", sme: "all", search: "", sort: "default" },
   datewiseView: "heatmap",  // heatmap | bydate | bycourse
   workloadFilters:      { sort: "overdue", view: "list" },
   delaysFilters:        { phase: "all", owner: "all", reason: "all", search: "", sort: "days" },
@@ -2295,9 +2295,18 @@ const LIFECYCLE_PHASES = ["KICKOFF","DISCOVERY","DESIGN","DEVELOPMENT","DELIVERY
 function statusOf(r){ return String(r.status||"").trim().toLowerCase(); }
 
 function parseSheetDate(s){
-  if (!s) return null;
-  // Apps Script returns YYYY-MM-DD strings
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s).trim());
+  if (s === null || s === undefined || s === "") return null;
+  // Numeric serial (Google Sheets / Excel — epoch 1899-12-30 = 0, 25569 days to 1970-01-01)
+  if (typeof s === "number" && s > 20000 && s < 80000) {
+    return new Date((s - 25569) * 86400000);
+  }
+  const str = String(s).trim();
+  if (/^\d{4,5}(\.\d+)?$/.test(str)) {
+    const n = parseFloat(str);
+    if (n > 20000 && n < 80000) return new Date((n - 25569) * 86400000);
+  }
+  // Standard YYYY-MM-DD from Apps Script
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
   if (!m) return null;
   const d = new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
   return isNaN(d) ? null : d;
@@ -3233,11 +3242,12 @@ function analyzeMatrix(rows, courses){
     if (cell.status === "wip")      phaseCount[ph].wip++;
   }));
 
-  // For filter UI: distinct cohorts + SMEs
+  // For filter UI: distinct cohorts + SMEs + LM/2U/HIRE
   const cohorts = Array.from(new Set(courses.map(c => c.phase).filter(Boolean))).sort();
   const smes = Array.from(new Set(courses.map(c => c.sme).filter(Boolean))).sort();
+  const lmTypes = Array.from(new Set(courses.map(c => c.lm_2u_hire).filter(Boolean))).sort();
 
-  return { taskOrder, grid, totals, phaseCount, cohorts, smes };
+  return { taskOrder, grid, totals, phaseCount, cohorts, smes, lmTypes };
 }
 
 function filterMatrix(m, filters){
@@ -3245,6 +3255,7 @@ function filterMatrix(m, filters){
   let rows = m.grid.filter(row => {
     const c = row.course;
     if (filters.cohort !== "all" && c.phase !== filters.cohort) return false;
+    if (filters.lmType !== "all" && c.lm_2u_hire !== filters.lmType) return false;
     if (filters.sme !== "all" && c.sme !== filters.sme) return false;
     if (q && !(String(c.title||"").toLowerCase().includes(q))) return false;
     return true;
@@ -3322,6 +3333,8 @@ function matrixToolbar(m, visibleCount, totalCount){
   const f = state.matrixFilters;
   const cohortOpts = ['<option value="all"' + (f.cohort==="all"?' selected':'') + '>All cohorts</option>']
     .concat(m.cohorts.map(c => '<option value="' + escapeHtml(c) + '"' + (f.cohort===c?' selected':'') + '>' + escapeHtml(c) + '</option>')).join("");
+  const lmTypeOpts = ['<option value="all"' + (f.lmType==="all"?' selected':'') + '>All types</option>']
+    .concat(m.lmTypes.map(t => '<option value="' + escapeHtml(t) + '"' + (f.lmType===t?' selected':'') + '>' + escapeHtml(t) + '</option>')).join("");
   const smeOpts = ['<option value="all"' + (f.sme==="all"?' selected':'') + '>All SMEs</option>']
     .concat(m.smes.map(s => '<option value="' + escapeHtml(s) + '"' + (f.sme===s?' selected':'') + '>' + escapeHtml(s) + '</option>')).join("");
   const sortOpts = [
@@ -3334,6 +3347,7 @@ function matrixToolbar(m, visibleCount, totalCount){
   return (
     '<div class="mx-toolbar">' +
       '<div class="field"><label>Cohort</label><select id="mx-f-cohort">' + cohortOpts + '</select></div>' +
+      '<div class="field"><label>LM/2U/HIRE</label><select id="mx-f-lm">' + lmTypeOpts + '</select></div>' +
       '<div class="field"><label>SME</label><select id="mx-f-sme">' + smeOpts + '</select></div>' +
       '<div class="field"><label>Sort</label><select id="mx-f-sort">' + sortOpts + '</select></div>' +
       '<div class="field"><label>Search</label><input type="search" id="mx-f-search" placeholder="Course title contains…" value="' + escapeHtml(f.search) + '" /></div>' +
@@ -3460,8 +3474,9 @@ function cellTooltip(course, cell){
 }
 
 function wireMatrixFilters(){
-  const cohort = $("#mx-f-cohort"), sme = $("#mx-f-sme"), sort = $("#mx-f-sort"), search = $("#mx-f-search"), clear = $("#mx-f-clear");
+  const cohort = $("#mx-f-cohort"), lm = $("#mx-f-lm"), sme = $("#mx-f-sme"), sort = $("#mx-f-sort"), search = $("#mx-f-search"), clear = $("#mx-f-clear");
   if (cohort) cohort.addEventListener("change", e => { state.matrixFilters.cohort = e.target.value; renderMatrix(); });
+  if (lm)     lm.addEventListener("change",     e => { state.matrixFilters.lmType = e.target.value; renderMatrix(); });
   if (sme)    sme.addEventListener("change",    e => { state.matrixFilters.sme    = e.target.value; renderMatrix(); });
   if (sort)   sort.addEventListener("change",   e => { state.matrixFilters.sort   = e.target.value; renderMatrix(); });
   if (search) {
@@ -3473,7 +3488,7 @@ function wireMatrixFilters(){
     });
   }
   if (clear) clear.addEventListener("click", () => {
-    state.matrixFilters = { cohort:"all", sme:"all", search:"", sort:"default" };
+    state.matrixFilters = { cohort:"all", lmType:"all", sme:"all", search:"", sort:"default" };
     renderMatrix();
   });
 }
@@ -3484,6 +3499,36 @@ function wireMatrixFilters(){
 function fmtSheetDate(d){
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dy = String(d.getDate()).padStart(2,"0");
   return y + "-" + m + "-" + dy;
+}
+
+/* Convert a Google Sheets serial date (or numeric string thereof) to a YYYY-MM-DD string. */
+function serialToISO(n){
+  // Use UTC components so the day doesn't shift across timezones.
+  const d = new Date((n - 25569) * 86400000);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dy = String(d.getUTCDate()).padStart(2, "0");
+  return y + "-" + m + "-" + dy;
+}
+
+/* Normalize the four date columns on a row in-place so downstream code only
+   sees "" or YYYY-MM-DD strings — protects against sheet cells that aren't
+   formatted as dates and arrive as raw serial numbers (e.g. 46154). */
+function normalizeRowDates(row){
+  const DATE_KEYS = ["planned_start_date","planned_end_date","actual_start_date","actual_end_date"];
+  for (const k of DATE_KEYS) {
+    const v = row[k];
+    if (v === "" || v === null || v === undefined) { row[k] = ""; continue; }
+    if (typeof v === "number" && v > 20000 && v < 80000) { row[k] = serialToISO(v); continue; }
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (/^\d{4,5}(\.\d+)?$/.test(t)) {
+        const n = parseFloat(t);
+        if (n > 20000 && n < 80000) { row[k] = serialToISO(n); continue; }
+      }
+      row[k] = t;
+    }
+  }
 }
 function fmtNiceDate(d){
   return d.toLocaleDateString(undefined, { weekday:"short", year:"numeric", month:"short", day:"numeric" });
@@ -3880,6 +3925,9 @@ async function loadData(){
     if (!data || data.ok === false) {
       throw new Error(data && data.error ? data.error : "Apps Script returned an error");
     }
+    // Defensive normalization: convert any serial-number date values
+    // (when sheet cells aren't formatted as dates) to YYYY-MM-DD strings.
+    if (data.rows) data.rows.forEach(normalizeRowDates);
     state.raw = data;
     state.rows = data.rows || [];
     state.courses = groupCourses(state.rows);
